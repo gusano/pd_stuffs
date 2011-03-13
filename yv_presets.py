@@ -110,8 +110,8 @@ class Patch(object):
 			u.r_name = receive.replace("\\", "")
 			# replace $1 chars
 			if self.arg:
-				u.s_name = u.s_name.replace("$1", self.arg)
-				u.r_name = u.r_name.replace("$1", self.arg)
+				u.s_name = u.s_name.replace("$1", str(self.arg))
+				u.r_name = u.r_name.replace("$1", str(self.arg))
 			self.uis.append(u)
 			self.found = True
 
