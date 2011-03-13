@@ -1,0 +1,49 @@
+#N canvas 281 106 677 514 10;
+#X msg 44 186 reload;
+#X obj 357 183 hsl 128 15 0 127 0 0 \$1_sendname \$1_recvname empty
+-2 -8 0 10 -262144 -1 -1 11300 1;
+#X obj 361 145 tgl 15 0 tglsnd tglrcv empty 17 7 0 10 -262144 -1 -1
+0 1;
+#X obj 323 133 vsl 15 128 0 127 0 0 snd_vsl rcv_vsl empty 0 -9 0 10
+-262144 -1 -1 9800 1;
+#X floatatom 401 145 5 0 0 0 - numrcv numsnd;
+#X msg 27 366 store \$1;
+#X msg 171 364 recall \$1;
+#X obj 171 341 hradio 15 1 0 8 empty empty recall 0 -8 0 10 -262144
+-1 -1 1;
+#X obj 27 342 hradio 15 1 0 8 empty empty store 0 -8 0 10 -262144 -1
+-1 1;
+#X obj 358 209 hradio 15 1 0 8 radiosnd radiorcv empty 0 -8 0 10 -262144
+-1 -1 5;
+#X obj 44 219 pyext yv_presets Preset;
+#X obj 522 183 nbx 5 14 -1e+37 1e+37 0 0 s_nbx r_nbx NOT_SUPPORTED
+0 -8 0 10 -262144 -1 -1 -88 256;
+#X obj 295 133 vradio 15 1 0 8 v_snd v_rcv empty 0 -8 0 10 -262144
+-1 -1 1;
+#X text 382 120 #2 - tweaks those objects;
+#X text 52 302 #3 - store/recall presets;
+#X msg 117 190 print;
+#X msg 16 65 path ~/pd/yv_presets-help.pd;
+#X text 372 302 #4 - write/read presets from/to file;
+#X msg 394 342 write ~/blah.txt;
+#X msg 420 363 read ~/blah.txt;
+#X obj 179 189 r main;
+#X obj 394 398 s main;
+#X text 16 19 #1 - send a list of PATHS to the patches you want to
+use with presets (paths to abstractions must also be sent if any);
+#X msg 53 86 path ~/pd/mycoolpatch.pd ~/pd/myabstraction.pd;
+#X text 142 463 note: this will save states of objects inside abstractions
+\, but NOT inside abstractions inside abstractions =);
+#X obj 394 398 s main;
+#X obj 54 113 s main;
+#X obj 27 407 s main;
+#X connect 0 0 10 0;
+#X connect 5 0 27 0;
+#X connect 6 0 27 0;
+#X connect 7 0 6 0;
+#X connect 8 0 5 0;
+#X connect 15 0 10 1;
+#X connect 16 0 26 0;
+#X connect 18 0 21 0;
+#X connect 19 0 21 0;
+#X connect 20 0 10 1;
