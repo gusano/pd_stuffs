@@ -1,49 +1,63 @@
-#N canvas 281 106 677 514 10;
-#X msg 44 186 reload;
-#X obj 357 183 hsl 128 15 0 127 0 0 \$1_sendname \$1_recvname empty
--2 -8 0 10 -262144 -1 -1 11300 1;
-#X obj 361 145 tgl 15 0 tglsnd tglrcv empty 17 7 0 10 -262144 -1 -1
-0 1;
-#X obj 323 133 vsl 15 128 0 127 0 0 snd_vsl rcv_vsl empty 0 -9 0 10
--262144 -1 -1 9800 1;
-#X floatatom 401 145 5 0 0 0 - numrcv numsnd;
-#X msg 27 366 store \$1;
-#X msg 171 364 recall \$1;
-#X obj 171 341 hradio 15 1 0 8 empty empty recall 0 -8 0 10 -262144
+#N canvas 277 100 677 514 10;
+#X obj 62 214 hsl 115 15 0 127 0 0 \$1_sendname \$1_recvname empty
+-2 -8 0 10 -262144 -1 -1 3900 1;
+#X obj 75 183 tgl 15 0 s_tgl r_tgl empty 17 7 0 10 -262144 -1 -1 1
+1;
+#X obj 35 174 vsl 15 115 0 127 0 0 s_vsl r_vsl empty 0 -9 0 10 -262144
+-1 -1 7800 1;
+#X floatatom 95 183 5 0 0 0 - r_num s_num;
+#X msg 325 214 store \$1;
+#X msg 451 213 recall \$1;
+#X obj 451 190 hradio 15 1 0 8 empty empty recall 0 -8 0 10 -262144
 -1 -1 1;
-#X obj 27 342 hradio 15 1 0 8 empty empty store 0 -8 0 10 -262144 -1
--1 1;
-#X obj 358 209 hradio 15 1 0 8 radiosnd radiorcv empty 0 -8 0 10 -262144
--1 -1 5;
-#X obj 44 219 pyext yv_presets Preset;
-#X obj 522 183 nbx 5 14 -1e+37 1e+37 0 0 s_nbx r_nbx NOT_SUPPORTED
-0 -8 0 10 -262144 -1 -1 -88 256;
-#X obj 295 133 vradio 15 1 0 8 v_snd v_rcv empty 0 -8 0 10 -262144
+#X obj 325 190 hradio 15 1 0 8 empty empty store 0 -8 0 10 -262144
 -1 -1 1;
-#X text 382 120 #2 - tweaks those objects;
-#X text 52 302 #3 - store/recall presets;
-#X msg 117 190 print;
-#X msg 16 65 path ~/pd/yv_presets-help.pd;
-#X text 372 302 #4 - write/read presets from/to file;
-#X msg 394 342 write ~/blah.txt;
-#X msg 420 363 read ~/blah.txt;
-#X obj 179 189 r main;
-#X obj 394 398 s main;
-#X text 16 19 #1 - send a list of PATHS to the patches you want to
-use with presets (paths to abstractions must also be sent if any);
-#X msg 53 86 path ~/pd/mycoolpatch.pd ~/pd/myabstraction.pd;
-#X text 142 463 note: this will save states of objects inside abstractions
-\, but NOT inside abstractions inside abstractions =);
-#X obj 394 398 s main;
-#X obj 54 113 s main;
-#X obj 27 407 s main;
-#X connect 0 0 10 0;
-#X connect 5 0 27 0;
-#X connect 6 0 27 0;
-#X connect 7 0 6 0;
-#X connect 8 0 5 0;
-#X connect 15 0 10 1;
-#X connect 16 0 26 0;
-#X connect 18 0 21 0;
-#X connect 19 0 21 0;
-#X connect 20 0 10 1;
+#X obj 59 231 hradio 15 1 0 8 s_radio r_hradio empty 0 -8 0 10 -262144
+-1 -1 4;
+#X obj 168 185 nbx 5 14 -1e+37 1e+37 0 0 s_nbx r_nbx NOT_SUPPORTED
+0 -8 0 10 -262144 -1 -1 0 256;
+#X obj 17 172 vradio 15 1 0 8 s_vradio r_vradio empty 0 -8 0 10 -262144
+-1 -1 3;
+#X text 329 150 #3 - store/recall presets;
+#X msg 16 79 path ~/pd/yv_presets-help.pd;
+#X msg 28 372 write ~/blah.txt;
+#X msg 54 393 read ~/blah.txt;
+#X obj 379 57 pyext yv_presets Preset;
+#X text 18 152 #2 - tweak those;
+#X obj 514 35 r p;
+#X obj 28 415 s p;
+#X obj 451 242 s p;
+#X obj 437 354 s p;
+#X msg 437 301 print;
+#X msg 463 322 reset;
+#X text 496 300 other messages;
+#X text 17 8 #1 - send the path of the patches/abstractions to use:
+[path PATH/TO/PATCH.pd arg( 'arg' is optional and replaces '\$1' arguments
+in send/receive symbols several patches can be managed at the same
+time;
+#X text 201 80 <- change this path to test this help patch;
+#X text 232 483 report bugs to yvan.volochine@gmail.com;
+#X text 202 396 the script parses the text versions of the given patches.
+it looks for UI objects with valid send/receive symbols. NOTE that
+only alphabetic characters and _ are supported (until somebody better
+than me with regexp fixes it =);
+#X msg 379 31 reload;
+#X text 59 266 NOTE: only characters [a-zA-Z_] are currently supported
+;
+#X text 57 249 all these objects have send/receive symbols;
+#X text 17 329 #4 - write/read presets from/to file;
+#X text 12 341 NOTE: you don't need [path ..( messages anymore if you
+read presets from a file;
+#X obj 16 103 s p;
+#X text 231 467 only tested on pd-v0.43.0-test3 with python 2.7;
+#X connect 4 0 19 0;
+#X connect 5 0 19 0;
+#X connect 6 0 5 0;
+#X connect 7 0 4 0;
+#X connect 12 0 33 0;
+#X connect 13 0 18 0;
+#X connect 14 0 18 0;
+#X connect 17 0 15 1;
+#X connect 21 0 20 0;
+#X connect 22 0 20 0;
+#X connect 28 0 15 0;
