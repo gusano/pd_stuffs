@@ -1,0 +1,238 @@
+From 1fd0ea7fa47bb976865cda81acf82e58b2aea645 Mon Sep 17 00:00:00 2001
+From: Yvan Volochine <yvan.volochine@gmail.com>
+Date: Thu, 17 Mar 2011 23:05:13 +0100
+Subject: [PATCH] added support for recent files via recentfiles.conf
+
+---
+ po/Makefile.am          |    2 +-
+ tcl/Makefile.am         |    2 +-
+ tcl/pd-gui.tcl          |    8 ++++++--
+ tcl/pd_menus.tcl        |   35 +++++++++++++++++++++++++----------
+ tcl/pkgIndex.tcl        |    9 +++++----
+ tcl/wheredoesthisgo.tcl |    8 ++------
+ 6 files changed, 40 insertions(+), 24 deletions(-)
+
+diff --git a/po/Makefile.am b/po/Makefile.am
+index 7ab45ee..b941684 100644
+--- a/po/Makefile.am
++++ b/po/Makefile.am
+@@ -9,7 +9,7 @@ if MACOSX
+   PATH := /sw/lib/gettext-tools-0.17/bin:${PATH}
+ endif
+ 
+-TCLFILES = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl 
++TCLFILES = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd_guiprefs.tcl
+ 
+ FILES=$(addprefix ../tcl/, $(TCLFILES))
+ 
+diff --git a/tcl/Makefile.am b/tcl/Makefile.am
+index 65780eb..cf952d2 100644
+--- a/tcl/Makefile.am
++++ b/tcl/Makefile.am
+@@ -10,7 +10,7 @@ bin_SCRIPTS = pd-gui.tcl
+ 
+ libpdtcldir = $(pkglibdir)/tcl
+ dist_libpdtcl_SCRIPTS = pd-gui.tcl
+-dist_libpdtcl_DATA = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd.ico
++dist_libpdtcl_DATA = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd_guiprefs.tcl pd.ico
+ 
+ etags: TAGS
+ 	etags --append --language=none --regex="/proc[ \t]+\([^ \t]+\)/\1/" *.tcl
+diff --git a/tcl/pd-gui.tcl b/tcl/pd-gui.tcl
+index 39b260f..eb753f3 100755
+--- a/tcl/pd-gui.tcl
++++ b/tcl/pd-gui.tcl
+@@ -46,12 +46,16 @@ package require pdtk_canvas
+ package require pdtk_text
+ # TODO eliminate this kludge:
+ package require wheredoesthisgo
++package require pd_guiprefs
+ 
+ #------------------------------------------------------------------------------#
+ # import functions into the global namespace
+ 
+ # make global since they are used throughout    
+ namespace import ::pd_menucommands::* 
++# not sure if I should do that (YVAN)
++# FIXME
++namespace import ::pd_guiprefs::*
+ 
+ # import into the global namespace for backwards compatibility
+ namespace import ::pd_connect::pdsend
+@@ -167,9 +171,9 @@ set dsp 0
+ set meters 0
+ # the toplevel window that currently is on top and has focus
+ set focused_window .
+-# store that last 10 files that were opened
++# store that last 5 files that were opened
+ set recentfiles_list {}
+-set total_recentfiles 10
++set total_recentfiles 5
+ # keep track of the location of popup menu for PatchWindows, in canvas coords
+ set popup_xcanvas 0
+ set popup_ycanvas 0
+diff --git a/tcl/pd_menus.tcl b/tcl/pd_menus.tcl
+index fc617df..279b4ef 100644
+--- a/tcl/pd_menus.tcl
++++ b/tcl/pd_menus.tcl
+@@ -123,7 +123,9 @@ proc ::pd_menus::configure_for_dialog {mytoplevel} {
+ # ------------------------------------------------------------------------------
+ # menu building functions
+ proc ::pd_menus::build_file_menu {mymenu} {
+-    # run the platform-specific build_file_menu_* procs first, the config them
++    # first read recentfiles from config file
++    ::pd_guiprefs::init_recentfiles
++    # then run the platform-specific build_file_menu_* procs first, and config them
+     [format build_file_menu_%s $::windowingsystem] $mymenu
+     $mymenu entryconfigure [_ "New"]        -command {menu_new}
+     $mymenu entryconfigure [_ "Open"]       -command {menu_open}
+@@ -133,6 +135,8 @@ proc ::pd_menus::build_file_menu {mymenu} {
+     $mymenu entryconfigure [_ "Close"]      -command {menu_send_float $::focused_window menuclose 0}
+     $mymenu entryconfigure [_ "Message..."] -command {menu_message_dialog}
+     $mymenu entryconfigure [_ "Print..."]   -command {menu_print $::focused_window}
++    # update recent files
++    ::pd_menus::update_recentfiles_menu false
+ }
+ 
+ proc ::pd_menus::build_edit_menu {mymenu} {
+@@ -326,22 +330,23 @@ proc ::pd_menus::update_undo_on_menu {mytoplevel} {
+ }
+ 
+ # ------------------------------------------------------------------------------
+-# update the menu entries for opening recent files
+-proc ::pd_menus::update_recentfiles_menu {} {
++# update the menu entries for opening recent files (write arg should always be true except the first time when pd is opened)
++proc ::pd_menus::update_recentfiles_menu {{write true}} {
+     variable menubar
+     switch -- $::windowingsystem {
+-        "aqua" {::pd_menus::update_openrecent_menu_aqua .openrecent}
+-        "win32" {update_recentfiles_on_menu $menubar.file}
+-        "x11" {update_recentfiles_on_menu $menubar.file}
++        "aqua" {::pd_menus::update_openrecent_menu_aqua .openrecent $write}
++        "win32" {update_recentfiles_on_menu $menubar.file $write}
++        "x11" {update_recentfiles_on_menu $menubar.file $write}
+     }
+ }
+ 
+ proc ::pd_menus::clear_recentfiles_menu {} {
++    variable menubar
+     set ::recentfiles_list {}
+     ::pd_menus::update_recentfiles_menu
+ }
+ 
+-proc ::pd_menus::update_openrecent_menu_aqua {mymenu} {
++proc ::pd_menus::update_openrecent_menu_aqua {mymenu {write}} {
+     if {! [winfo exists $mymenu]} {menu $mymenu}
+     $mymenu delete 0 end
+     $mymenu add  separator
+@@ -352,24 +357,30 @@ proc ::pd_menus::update_openrecent_menu_aqua {mymenu} {
+         $mymenu insert 0 command -label [file tail $filename] \
+             -command "open_file {$filename}"
+     }
++    # write to config file
++    if {write == true} { ::pd_gui_prefs::write_recentfiles }
+ }
+ 
+ # this expects to be run on the File menu, and to insert above the last separator
+-proc ::pd_menus::update_recentfiles_on_menu {mymenu} {
++proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
+     set lastitem [$mymenu index end]
+     set i 1
+     while {[$mymenu type [expr $lastitem-$i]] ne "separator"} {incr i}
+     set bottom_separator [expr $lastitem-$i]
+     incr i
++
+     while {[$mymenu type [expr $lastitem-$i]] ne "separator"} {incr i}
+     set top_separator [expr $lastitem-$i]
+     if {$top_separator < [expr $bottom_separator-1]} {
+         $mymenu delete [expr $top_separator+1] [expr $bottom_separator-1]
+     }
++
+     foreach filename $::recentfiles_list {
+         $mymenu insert [expr $top_separator+1] command \
+             -label [file tail $filename] -command "open_file {$filename}"
+     }
++    # write to config file
++    if {$write == true} { ::pd_guiprefs::write_recentfiles }
+ }
+ 
+ 
+@@ -481,7 +492,8 @@ proc ::pd_menus::build_file_menu_aqua {mymenu} {
+     variable accelerator
+     $mymenu add command -label [_ "New"]       -accelerator "$accelerator+N"
+     $mymenu add command -label [_ "Open"]      -accelerator "$accelerator+O"
+-    ::pd_menus::update_openrecent_menu_aqua .openrecent
++    # this is now done in main ::pd_menus::build_file_menu
++    #::pd_menus::update_openrecent_menu_aqua .openrecent
+     $mymenu add cascade -label [_ "Open Recent"] -menu .openrecent
+     $mymenu add  separator
+     $mymenu add command -label [_ "Close"]     -accelerator "$accelerator+W"
+@@ -512,6 +524,10 @@ proc ::pd_menus::build_file_menu_x11 {mymenu} {
+     variable accelerator
+     $mymenu add command -label [_ "New"]        -accelerator "$accelerator+N"
+     $mymenu add command -label [_ "Open"]       -accelerator "$accelerator+O"
++    # FIXME
++    #create_recentfiles_menu $mymenu.recentfiles
++    # FIXME
++    #$mymenu add cascade -label [_ "Recent"] -menu $mymenu.recentfiles
+     $mymenu add  separator
+     $mymenu add command -label [_ "Save"]       -accelerator "$accelerator+S"
+     $mymenu add command -label [_ "Save As..."] -accelerator "Shift+$accelerator+S"
+@@ -583,4 +599,3 @@ proc ::pd_menus::build_window_menu_win32 {mymenu} {
+ }
+ 
+ # the "Help" does not have cross-platform differences
+-
+diff --git a/tcl/pkgIndex.tcl b/tcl/pkgIndex.tcl
+index 5f4921b..383a7ab 100644
+--- a/tcl/pkgIndex.tcl
++++ b/tcl/pkgIndex.tcl
+@@ -8,9 +8,6 @@
+ # script is sourced, the variable $dir must contain the
+ # full path name of this file's directory.
+ 
+-package ifneeded apple_events 0.1 [list source [file join $dir apple_events.tcl]]
+-package ifneeded pd_bindings 0.1 [list source [file join $dir pd_bindings.tcl]]
+-package ifneeded pd_connect 0.1 [list source [file join $dir pd_connect.tcl]]
+ package ifneeded dialog_array 0.1 [list source [file join $dir dialog_array.tcl]]
+ package ifneeded dialog_audio 0.1 [list source [file join $dir dialog_audio.tcl]]
+ package ifneeded dialog_canvas 0.1 [list source [file join $dir dialog_canvas.tcl]]
+@@ -25,11 +22,15 @@ package ifneeded dialog_path 0.1 [list source [file join $dir dialog_path.tcl]]
+ package ifneeded dialog_startup 0.1 [list source [file join $dir dialog_startup.tcl]]
+ package ifneeded helpbrowser 0.1 [list source [file join $dir helpbrowser.tcl]]
+ package ifneeded opt_parser 0.1 [list source [file join $dir opt_parser.tcl]]
+-package ifneeded pdwindow 0.1 [list source [file join $dir pdwindow.tcl]]
++package ifneeded pd_bindings 0.1 [list source [file join $dir pd_bindings.tcl]]
++package ifneeded pd_connect 0.1 [list source [file join $dir pd_connect.tcl]]
++package ifneeded pd_guiprefs 0.1 [list source [file join $dir pd_guiprefs.tcl]]
+ package ifneeded pd_menucommands 0.1 [list source [file join $dir pd_menucommands.tcl]]
+ package ifneeded pd_menus 0.1 [list source [file join $dir pd_menus.tcl]]
++package ifneeded pdtk_array 0.1 [list source [file join $dir pdtk_array.tcl]]
+ package ifneeded pdtk_canvas 0.1 [list source [file join $dir pdtk_canvas.tcl]]
+ package ifneeded pdtk_text 0.1 [list source [file join $dir pdtk_text.tcl]]
++package ifneeded pdwindow 0.1 [list source [file join $dir pdwindow.tcl]]
+ package ifneeded scrollbox 0.1 [list source [file join $dir scrollbox.tcl]]
+ package ifneeded scrollboxwindow 0.1 [list source [file join $dir scrollboxwindow.tcl]]
+ package ifneeded wheredoesthisgo 0.1 [list source [file join $dir wheredoesthisgo.tcl]]
+diff --git a/tcl/wheredoesthisgo.tcl b/tcl/wheredoesthisgo.tcl
+index 1e9e034..f1626c2 100644
+--- a/tcl/wheredoesthisgo.tcl
++++ b/tcl/wheredoesthisgo.tcl
+@@ -9,12 +9,8 @@ proc open_file {filename} {
+     if {[regexp -nocase -- "\.(pd|pat|mxt)$" $filename]} {
+         ::pdtk_canvas::started_loading_file [format "%s/%s" $basename $filename]
+         pdsend "pd open [enquote_path $basename] [enquote_path $directory]"
+-        # remove duplicates first, then the duplicate added after to the top
+-        set index [lsearch -exact $::recentfiles_list $filename]
+-        set ::recentfiles_list [lreplace $::recentfiles_list $index $index]
+-        lappend ::recentfiles_list $filename
+-        set ::recentfiles_list [lrange $::recentfiles_list 0 $::total_recentfiles]
+-        ::pd_menus::update_recentfiles_menu
++	# now this is done in pd_guiprefs
++	::pd_guiprefs::update_recentfiles $filename
+     } {
+         ::pdwindow::post [format [_ "Ignoring '%s': doesn't look like a Pd-file"] $filename]
+     }
+-- 
+1.7.4.1
+
