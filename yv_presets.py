@@ -132,7 +132,6 @@ class Patch(object):
 				u.s_name = u.s_name.replace("#1", str(self.arg))
 				u.r_name = u.r_name.replace("#1", str(self.arg))
 			self.uis.append(u)
-			#print "### ", u.ui
 			self.found = True
 
 
@@ -144,11 +143,11 @@ class Preset(pyext._class):
 	_inlets  = 1
 	_outlets = 0
 	patches  = []
-	found    = []   # all UI objects in patch and abstractions
-	preset   = {}   # current state
-	presets  = {}   # all presets
-	current  = ""   # current object being queried
-	special  = None # special case for toggle (needs 2 bangs)
+	found    = [] # all UI objects in patch and abstractions
+	preset   = {} # current state
+	presets  = {} # all presets
+	current  = "" # current object being queried
+	special  = [] # special case for toggle (needs 2 bangs)
 	verbose  = True
 
 	def __init__(self,*args):
@@ -163,6 +162,7 @@ class Preset(pyext._class):
 		self.preset  = {}
 		self.presets = {}
 		self.found   = []
+		self.special = []
 
 
 	def reset_1(self):
@@ -179,7 +179,7 @@ class Preset(pyext._class):
 		path = os.path.expanduser(str(args[0]))
 		patch = Patch(path)
 		if len(args) > 1: patch.arg = args[1]
-		if self.verbose: print "added ", path
+		if self.verbose: print "\nadded ", path
 		# store and bind the UI objects
 		if patch.find_uis():
 			self.patches.append(patch)
@@ -212,16 +212,17 @@ class Preset(pyext._class):
 			self._send(f.r_name, "bang", ()) # send a bang
 			# tgl case
 			if f.ui == 'tgl':
-				self.special = f.r_name
+				self.special.append(f.r_name)
 		# lock recv function, store and clean
 		self.current = ""
-		if self.special != None:
+		if len(self.special) > 0:
 			# special case with [tgl]:
-			# sending it a bang changes its state so it has to recover
-			# its initial state
-			self.preset[self.special] = 1 - self.preset[self.special]
-			self._send(self.special, "bang", ()) # send a second bang
-			self.special = None
+			# sending [tgl] a bang changes its state so it has to recover
+			# its initial state. this resets all found [tgl]
+			for s in self.special:
+				self.preset[s] = 1 - self.preset[s]
+				self._send(s, "bang", ()) # send a second bang
+			self.special = []
 		self.presets[a] = self.preset
 		self.preset = {}
 		print "stored ", a
