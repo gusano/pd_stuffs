@@ -69,10 +69,13 @@ class Patch(object):
 	def reformat(self):
 		"""in case the patch as text has \n characters"""
 
-		self.txt = ''.join(self.txt)
+		self.txt = ' '.join(self.txt)
+		self.txt = self.txt.replace(" ;", ";")
+		self.txt = self.txt.replace("\n", "")
+		#self.txt = self.txt.replace("\n", "")
 		# remove boring ";" who (when alone on a line) mess things up 
-		self.txt = self.txt.replace(";", "")
-		self.txt = self.txt.split('\n')
+		#self.txt = self.txt.replace(";", "\n")
+		self.txt = self.txt.split(";")
 
 
 	def find_uis(self):
@@ -92,13 +95,14 @@ class Patch(object):
 	def validate_send_receive(self, arr):
 		"""check that send and receive symbols are correct (not 'empty' neither '-')"""
 
-		valid = True
 		wrong = ['-', 'empty']
 		for a in arr:
+			valid = True
 			if a in wrong:
 				valid = False
 				break
 		return valid
+
 
 	def find_send_receive(self, l, u):
 		"""look for 3 words in a row, which means send symbol,
@@ -128,6 +132,7 @@ class Patch(object):
 				u.s_name = u.s_name.replace("#1", str(self.arg))
 				u.r_name = u.r_name.replace("#1", str(self.arg))
 			self.uis.append(u)
+			#print "### ", u.ui
 			self.found = True
 
 
@@ -187,7 +192,7 @@ class Preset(pyext._class):
 		for u in patch.uis:
 			self.found.append(u)
 			self._bind(u.s_name, self.recv)
-			if self.verbose: print "bound ", u.ui, " &s_name: ", u.s_name, " &r_name: ", u.r_name
+			if self.verbose: print "bound", u.ui, "&s_name:", u.s_name, "&r_name:", u.r_name
 
 
 	def debug_1(self):
