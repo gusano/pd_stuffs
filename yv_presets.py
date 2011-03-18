@@ -70,7 +70,9 @@ class Patch(object):
 		"""in case the patch as text has \n characters"""
 
 		self.txt = ''.join(self.txt)
-		self.txt = self.txt.split(';')
+		# remove boring ";" who (when alone on a line) mess things up 
+		self.txt = self.txt.replace(";", "")
+		self.txt = self.txt.split('\n')
 
 
 	def find_uis(self):
@@ -106,7 +108,7 @@ class Patch(object):
 		label, send, receive = ['empty', 'empty', 'empty']
 		# special case for floatatom: line ends with 'label, receive, send'
 		if u.ui == 'floatatom':
-			l = l.replace(';', '')
+			#l = l.replace(';', '')
 			l = l.split(" ")
 			label, receive, send = l[-3:]
 		else:
@@ -188,6 +190,13 @@ class Preset(pyext._class):
 			if self.verbose: print "bound ", u.ui, " &s_name: ", u.s_name, " &r_name: ", u.r_name
 
 
+	def debug_1(self):
+		for f in self.found:
+			print f.ui
+			print f.s_name
+			print f.r_name
+			print "\n"
+
 	def store_1(self, a):
 		"""loop through all UI objects and send them a bang to get
 		their current value and store it"""
@@ -196,6 +205,7 @@ class Preset(pyext._class):
 			# unlock and prepare to store the first received value
 			self.current = f.r_name # receive symbol
 			self._send(f.r_name, "bang", ()) # send a bang
+			# tgl case
 			if f.ui == 'tgl':
 				self.special = f.r_name
 		# lock recv function, store and clean
