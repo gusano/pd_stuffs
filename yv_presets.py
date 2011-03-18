@@ -114,7 +114,7 @@ class Patch(object):
 			if len(reg) > 0:
 				send, receive, label = reg[0]
 
-		if validate_send_receive([send, receive]):
+		if self.validate_send_receive([send, receive]):
 			u.s_name = send.replace("\\", "")
 			u.r_name = receive.replace("\\", "")
 			# replace $1 chars
