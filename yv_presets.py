@@ -87,6 +87,15 @@ class Patch(object):
 		return self.found
 				
 
+	def validate_send_receive(self, arr):
+		valid = True
+		wrong = ['-', 'empty']
+		for a in arr:
+			if a in wrong:
+				valid = False
+				break
+		return valid
+
 	def find_send_receive(self, l, u):
 		"""look for 3 words in a row, which means send symbol,
 		receive symbol and label (floatatom has those in reverse order)
@@ -97,7 +106,6 @@ class Patch(object):
 		if u.ui == 'floatatom':
 			l = l.replace(';', '')
 			l = l.split(" ")
-			tmp = l[-3:]
 			label, receive, send = l[-3:]
 		else:
 			# this could/should be better
@@ -106,17 +114,15 @@ class Patch(object):
 			if len(reg) > 0:
 				send, receive, label = reg[0]
 
-		if [send, receive] != ['empty', 'empty']:
-			# floatatom case
-			if [send, receive] != ['-', '-']:
-				u.s_name = send.replace("\\", "")
-				u.r_name = receive.replace("\\", "")
-				# replace $1 chars
-				if self.arg:
-					u.s_name = u.s_name.replace("$1", str(self.arg))
-					u.r_name = u.r_name.replace("$1", str(self.arg))
-				self.uis.append(u)
-				self.found = True
+		if validate_send_receive([send, receive]):
+			u.s_name = send.replace("\\", "")
+			u.r_name = receive.replace("\\", "")
+			# replace $1 chars
+			if self.arg:
+				u.s_name = u.s_name.replace("$1", str(self.arg))
+				u.r_name = u.r_name.replace("$1", str(self.arg))
+			self.uis.append(u)
+			self.found = True
 
 
 
