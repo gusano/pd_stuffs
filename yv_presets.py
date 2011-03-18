@@ -97,6 +97,7 @@ class Patch(object):
 		if u.ui == 'floatatom':
 			l = l.replace(';', '')
 			l = l.split(" ")
+			tmp = l[-3:]
 			label, receive, send = l[-3:]
 		else:
 			# this could/should be better
@@ -106,14 +107,16 @@ class Patch(object):
 				send, receive, label = reg[0]
 
 		if [send, receive] != ['empty', 'empty']:
-			u.s_name = send.replace("\\", "")
-			u.r_name = receive.replace("\\", "")
-			# replace $1 chars
-			if self.arg:
-				u.s_name = u.s_name.replace("$1", str(self.arg))
-				u.r_name = u.r_name.replace("$1", str(self.arg))
-			self.uis.append(u)
-			self.found = True
+			# floatatom case
+			if [send, receive] != ['-', '-']:
+				u.s_name = send.replace("\\", "")
+				u.r_name = receive.replace("\\", "")
+				# replace $1 chars
+				if self.arg:
+					u.s_name = u.s_name.replace("$1", str(self.arg))
+					u.r_name = u.r_name.replace("$1", str(self.arg))
+				self.uis.append(u)
+				self.found = True
 
 
 
@@ -172,7 +175,7 @@ class Preset(pyext._class):
 		for u in patch.uis:
 			self.found.append(u)
 			self._bind(u.s_name, self.recv)
-			if self.verbose: print "bound ", u.ui
+			if self.verbose: print "bound ", u.ui, " &s_name: ", u.s_name, " &r_name: ", u.r_name
 
 
 	def store_1(self, a):
