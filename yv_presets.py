@@ -88,6 +88,8 @@ class Patch(object):
 				
 
 	def validate_send_receive(self, arr):
+		"""check that send and receive symbols are correct (not 'empty' neither '-')"""
+
 		valid = True
 		wrong = ['-', 'empty']
 		for a in arr:
@@ -117,10 +119,12 @@ class Patch(object):
 		if self.validate_send_receive([send, receive]):
 			u.s_name = send.replace("\\", "")
 			u.r_name = receive.replace("\\", "")
-			# replace $1 chars
+			# replace $1 and #1 with provided argument
 			if self.arg:
 				u.s_name = u.s_name.replace("$1", str(self.arg))
 				u.r_name = u.r_name.replace("$1", str(self.arg))
+				u.s_name = u.s_name.replace("#1", str(self.arg))
+				u.r_name = u.r_name.replace("#1", str(self.arg))
 			self.uis.append(u)
 			self.found = True
 
