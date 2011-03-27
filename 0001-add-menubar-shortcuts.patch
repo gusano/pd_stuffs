@@ -1,0 +1,32 @@
+From 7114e424d58301f8b333c41706584cc9e1d3fb9e Mon Sep 17 00:00:00 2001
+From: Yvan Volochine <yvan.volochine@gmail.com>
+Date: Sun, 27 Mar 2011 19:22:45 +0200
+Subject: [PATCH] add menubar shortcuts
+
+---
+ tcl/pd_menus.tcl |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/tcl/pd_menus.tcl b/tcl/pd_menus.tcl
+index fc617df..6e07a88 100644
+--- a/tcl/pd_menus.tcl
++++ b/tcl/pd_menus.tcl
+@@ -38,9 +38,14 @@ proc ::pd_menus::create_menubar {} {
+     menu $menubar
+     set menulist "file edit put find media window help"
+     foreach mymenu $menulist {    
++	if {$mymenu eq "find"} {
++	    set underlined 3
++	} {
++	    set underlined 0
++	}
+         menu $menubar.$mymenu
+         $menubar add cascade -label [_ [string totitle $mymenu]] \
+-            -menu $menubar.$mymenu
++            -underline $underlined -menu $menubar.$mymenu
+         [format build_%s_menu $mymenu] $menubar.$mymenu
+     }
+     if {$::windowingsystem eq "aqua"} {create_apple_menu $menubar}
+-- 
+1.7.4.1
+
