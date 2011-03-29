@@ -1,4 +1,4 @@
-From 504656b6c44df260dd7f14f6aeb18e7bcd0768a7 Mon Sep 17 00:00:00 2001
+From 963d3d03901ec4574c6b08b54d5d153284c7b31e Mon Sep 17 00:00:00 2001
 From: Yvan Volochine <yvan.volochine@gmail.com>
 Date: Mon, 28 Mar 2011 23:16:04 +0200
 Subject: [PATCH] test for osx_20110328
@@ -7,12 +7,12 @@ Subject: [PATCH] test for osx_20110328
  po/Makefile.am          |    2 +-
  tcl/Makefile.am         |    2 +-
  tcl/pd-gui.tcl          |   10 ++-
- tcl/pd_guiprefs.tcl     |  259 +++++++++++++++++++++++++++++++++++++++++++++++
- tcl/pd_menus.tcl        |   46 +++++---
+ tcl/pd_guiprefs.tcl     |  256 +++++++++++++++++++++++++++++++++++++++++++++++
+ tcl/pd_menus.tcl        |   46 ++++++---
  tcl/pdtk_canvas.tcl     |    2 +
  tcl/pkgIndex.tcl        |    1 +
  tcl/wheredoesthisgo.tcl |    8 +-
- 8 files changed, 303 insertions(+), 27 deletions(-)
+ 8 files changed, 300 insertions(+), 27 deletions(-)
  create mode 100644 tcl/pd_guiprefs.tcl
 
 diff --git a/po/Makefile.am b/po/Makefile.am
@@ -83,10 +83,10 @@ index 39b260f..d2fbdba 100755
      ::pd_bindings::global_bindings
 diff --git a/tcl/pd_guiprefs.tcl b/tcl/pd_guiprefs.tcl
 new file mode 100644
-index 0000000..de1ace5
+index 0000000..e4e08a8
 --- /dev/null
 +++ b/tcl/pd_guiprefs.tcl
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,256 @@
 +#
 +# Copyright (c) 1997-2009 Miller Puckette.
 +# Copyright (c) 2011 Yvan Volochine.
@@ -127,7 +127,7 @@ index 0000000..de1ace5
 +	"win32" {
 +	    set recentfiles_key "RecentDocs"
 +	}
-+	 linux uses ~/.config/pure-data directory
++	# linux uses ~/.config/pure-data directory
 +	"x11" {
 +	    set recentfiles_key "recentfiles.conf"
 +	    prepare_configdir
@@ -135,11 +135,8 @@ index 0000000..de1ace5
 +    }
 +    # assign gui preferences
 +    # osx special case for arrays
-+    if {$::windowingsystem eq "aqua"} {
-+	set arr true
-+    } {
-+	set arr false
-+    }
++    set arr [expr { $::windowingsystem eq "aqua" }]
++
 +    set ::recentfiles_list [get_config $recentfiles_key $arr]
 +}
 +
