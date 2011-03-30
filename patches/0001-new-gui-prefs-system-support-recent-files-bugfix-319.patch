@@ -1,0 +1,501 @@
+From 35793396b5f8731c2bba594a322592a72b14aba1 Mon Sep 17 00:00:00 2001
+From: Yvan Volochine <yvan.volochine@gmail.com>
+Date: Tue, 29 Mar 2011 15:53:13 +0200
+Subject: [PATCH] new gui prefs system - support recent files - bugfix 3192731 gui hangs if recent file does not exist
+
+---
+ po/Makefile.am          |    2 +-
+ tcl/Makefile.am         |    2 +-
+ tcl/pd-gui.tcl          |   10 ++-
+ tcl/pd_guiprefs.tcl     |  238 +++++++++++++++++++++++++++++++++++++++++++++++
+ tcl/pd_menus.tcl        |   52 +++++++----
+ tcl/pdtk_canvas.tcl     |    2 +
+ tcl/pkgIndex.tcl        |    1 +
+ tcl/wheredoesthisgo.tcl |   13 +--
+ 8 files changed, 292 insertions(+), 28 deletions(-)
+ create mode 100644 tcl/pd_guiprefs.tcl
+
+diff --git a/po/Makefile.am b/po/Makefile.am
+index 7ab45ee..b941684 100644
+--- a/po/Makefile.am
++++ b/po/Makefile.am
+@@ -9,7 +9,7 @@ if MACOSX
+   PATH := /sw/lib/gettext-tools-0.17/bin:${PATH}
+ endif
+ 
+-TCLFILES = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl 
++TCLFILES = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd_guiprefs.tcl
+ 
+ FILES=$(addprefix ../tcl/, $(TCLFILES))
+ 
+diff --git a/tcl/Makefile.am b/tcl/Makefile.am
+index 65780eb..cf952d2 100644
+--- a/tcl/Makefile.am
++++ b/tcl/Makefile.am
+@@ -10,7 +10,7 @@ bin_SCRIPTS = pd-gui.tcl
+ 
+ libpdtcldir = $(pkglibdir)/tcl
+ dist_libpdtcl_SCRIPTS = pd-gui.tcl
+-dist_libpdtcl_DATA = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd.ico
++dist_libpdtcl_DATA = apple_events.tcl dialog_canvas.tcl dialog_gatom.tcl dialog_path.tcl pd_bindings.tcl pd_menus.tcl pdwindow.tcl scrollboxwindow.tcl AppMain.tcl dialog_data.tcl dialog_iemgui.tcl dialog_startup.tcl pd_connect.tcl pdtk_array.tcl pkgIndex.tcl wheredoesthisgo.tcl dialog_array.tcl dialog_find.tcl dialog_message.tcl helpbrowser.tcl pdtk_canvas.tcl pkg_mkIndex.tcl dialog_audio.tcl dialog_font.tcl dialog_midi.tcl opt_parser.tcl pd_menucommands.tcl pdtk_text.tcl scrollbox.tcl pd_guiprefs.tcl pd.ico
+ 
+ etags: TAGS
+ 	etags --append --language=none --regex="/proc[ \t]+\([^ \t]+\)/\1/" *.tcl
+diff --git a/tcl/pd-gui.tcl b/tcl/pd-gui.tcl
+index 39b260f..d2fbdba 100755
+--- a/tcl/pd-gui.tcl
++++ b/tcl/pd-gui.tcl
+@@ -46,10 +46,15 @@ package require pdtk_canvas
+ package require pdtk_text
+ # TODO eliminate this kludge:
+ package require wheredoesthisgo
++package require pd_guiprefs
+ 
+ #------------------------------------------------------------------------------#
+ # import functions into the global namespace
+ 
++# gui preferences
++namespace import ::pd_guiprefs::init
++namespace import ::pd_guiprefs::update_recentfiles
++namespace import ::pd_guiprefs::write_recentfiles
+ # make global since they are used throughout    
+ namespace import ::pd_menucommands::* 
+ 
+@@ -167,9 +172,9 @@ set dsp 0
+ set meters 0
+ # the toplevel window that currently is on top and has focus
+ set focused_window .
+-# store that last 10 files that were opened
++# store that last 5 files that were opened
+ set recentfiles_list {}
+-set total_recentfiles 10
++set total_recentfiles 5
+ # keep track of the location of popup menu for PatchWindows, in canvas coords
+ set popup_xcanvas 0
+ set popup_ycanvas 0
+@@ -492,6 +497,7 @@ proc pdtk_pd_startup {major minor bugfix test
+     if {$::tcl_version >= 8.5} {find_default_font}
+     set_base_font $sys_font $sys_fontweight
+     fit_font_into_metrics
++    ::pd_guiprefs::init
+     pdsend "pd init [enquote_path [pwd]] $oldtclversion $::font_measured_metrics"
+     ::pd_bindings::class_bindings
+     ::pd_bindings::global_bindings
+diff --git a/tcl/pd_guiprefs.tcl b/tcl/pd_guiprefs.tcl
+new file mode 100644
+index 0000000..7b1df55
+--- /dev/null
++++ b/tcl/pd_guiprefs.tcl
+@@ -0,0 +1,238 @@
++#
++# Copyright (c) 1997-2009 Miller Puckette.
++# Copyright (c) 2011 Yvan Volochine.
++#(c) 2008 WordTech Communications LLC. License: standard Tcl license, http://www.tcl.tk/software/tcltk/license.html
++
++package provide pd_guiprefs 0.1
++
++
++namespace eval ::pd_guiprefs:: {
++    namespace export init
++    namespace export write_recentfiles
++    namespace export update_recentfiles
++}
++
++# FIXME should these be globals ?
++set ::recentfiles_key ""
++set ::recentfiles_domain ""
++
++
++#################################################################
++# global procedures
++#################################################################
++# ------------------------------------------------------------------------------
++# init preferences
++#
++proc ::pd_guiprefs::init {} {
++    switch -- $::windowingsystem {
++        "aqua"  { init_aqua }
++        "win32" { init_win }
++        "x11"   { init_x11 }
++    }
++    # assign gui preferences
++    # osx special case for arrays
++    set arr [expr { $::windowingsystem eq "aqua" }]
++    set ::recentfiles_list [get_config $::recentfiles_domain $::recentfiles_key $arr]
++}
++
++proc init_aqua {} {
++    # osx has a "Open Recent" menu with 10 recent files (others have 5 inlined)
++    set ::recentfiles_domain org.puredata
++    set ::recentfiles_key "NSRecentDocuments"
++    set ::total_recentfiles 10
++}
++
++proc init_win {} {
++    # windows uses registry
++    set ::recentfiles_domain "HKEY_CURRENT_USER\\Software\\Pure-Data"
++    set ::recentfiles_key "RecentDocs"
++}
++
++proc init_x11 {} {
++    # linux uses ~/.config/pure-data dir
++    set ::recentfiles_domain "~/.config/pure-data"
++    set ::recentfiles_key "recentfiles.conf"
++    prepare_configdir
++}
++
++# ------------------------------------------------------------------------------
++# write recent files
++#
++proc ::pd_guiprefs::write_recentfiles {} {
++    write_config $::recentfiles_list $::recentfiles_domain $::recentfiles_key true
++}
++
++# ------------------------------------------------------------------------------
++# this is called when opening a document (wheredoesthisshouldgo.tcl)
++#
++proc ::pd_guiprefs::update_recentfiles {afile} {
++    # remove duplicates first
++    set index [lsearch -exact $::recentfiles_list $afile]
++    set ::recentfiles_list [lreplace $::recentfiles_list $index $index]
++    # insert new one in the beginning and crop the list
++    set ::recentfiles_list [linsert $::recentfiles_list 0 $afile]
++    set ::recentfiles_list [lrange $::recentfiles_list 0 $::total_recentfiles]
++    ::pd_menus::update_recentfiles_menu
++}
++
++#################################################################
++# main read/write procedures
++#################################################################
++
++# ------------------------------------------------------------------------------
++# get configs from a file or the registry
++#
++proc get_config {adomain {akey} {arr}} {
++    switch -- $::windowingsystem {
++        "aqua"  { set conf [get_config_aqua $adomain $akey $arr] }
++        "win32" { set conf [get_config_win $adomain $akey $arr] }
++        "x11"   { set conf [get_config_x11 $adomain $akey $arr] }
++    }
++    return $conf
++}
++
++# ------------------------------------------------------------------------------
++# write configs to a file or to the registry
++# $arr is true if the data needs to be written in an array
++#
++proc write_config {data {adomain} {akey} {arr false}} {
++    switch -- $::windowingsystem {
++        "aqua"  { write_config_aqua $data $adomain $akey $arr }
++        "win32" { write_config_win $data $adomain $akey $arr }
++        "x11"   { write_config_x11 $data $adomain $akey }
++    }
++}
++
++#################################################################
++# os specific procedures
++#################################################################
++
++# ------------------------------------------------------------------------------
++# osx: read a plist file
++#
++proc get_config_aqua {adomain {akey} {arr false}} {
++    if {![catch {exec defaults read $adomain $akey} conf]} {
++        if {$arr} {
++            set conf [plist_array_to_tcl_list $conf]
++        }
++    } {
++        # initialize NSRecentDocuments with an empty array
++        exec defaults write $adomain $akey -array
++        set conf {}
++    }
++    return $conf
++}
++
++# ------------------------------------------------------------------------------
++# win: read in the registry
++#
++proc get_config_win {adomain {akey} {arr false}} {
++    pacḱage require registry
++    if {![catch {registry get $adomain $akey} conf]} {
++        return [expr {$conf}]
++    } {
++        return {}
++    }
++}
++
++# ------------------------------------------------------------------------------
++# linux: read a config file and return its lines splitted.
++#
++proc get_config_x11 {adomain {akey} {arr false}} {
++    set filename [file join $adomain $akey]
++    set conf {}
++    if {
++        [file exists $filename] == 1
++        && [file readable $filename]
++    } {
++        set fl [open $filename r]
++        while {[gets $fl line] >= 0} {
++           lappend conf $line
++        }
++        close $fl
++    }
++    return $conf
++}
++
++# ------------------------------------------------------------------------------
++# osx: write configs to plist file
++# if $arr is true, we write an array
++#
++proc write_config_aqua {data {adomain} {akey} {arr false}} {
++    # FIXME empty and write again so we don't loose the order
++    if {[catch {exec defaults write $adomain $akey -array} errorMsg]} {
++        puts stderr "ERROR: write_config_aqua $akey: $errorMsg"
++    }
++    if {$arr} {
++        foreach filepath $data {
++            exec defaults write $adomain $akey -array-add $filepath
++        }
++    } {
++        exec defaults write $adomain $akey $data
++    }
++}
++
++# ------------------------------------------------------------------------------
++# win: write configs to registry
++# if $arr is true, we write an array
++#
++proc write_config_win {data {adomain} {akey} {arr false}} {
++    pacḱage require registry
++    # FIXME: ugly
++    if {$arr} {
++        if {[catch {registry set $adomain $akey $data multi_sz} errorMsg]} {
++            puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
++        }
++    } {
++        if {[catch {registry set $adomain $akey $data sz} errorMsg]} {
++            puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
++        }
++    }
++}
++
++# ------------------------------------------------------------------------------
++# linux: write configs to USER_APP_CONFIG_DIR
++#
++proc write_config_x11 {data {adomain} {akey}} {
++    # right now I (yvan) assume that data are just \n separated, i.e. no keys
++    set data [join $data "\n"]
++    set filename [file join $adomain $akey]
++    if {[catch {set fl [open $filename w]} errorMsg]} {
++        puts stderr "ERROR: write_config_x11 $data $akey: $errorMsg"
++    } {
++        puts -nonewline $fl $data
++        close $fl
++    }
++}
++
++#################################################################
++# utils
++#################################################################
++
++# ------------------------------------------------------------------------------
++# linux only! : look for pd config directory and create it if needed
++#
++proc prepare_configdir {} {
++    if {[file isdirectory $::recentfiles_domain] != 1} {
++        file mkdir $::recentfiles_domain
++        puts "$::recentfiles_domain was created.\n"
++    }
++}
++
++# ------------------------------------------------------------------------------
++# osx: handles arrays in plist files (thanks hc)
++#
++proc plist_array_to_tcl_list {arr} {
++    set result {}
++    set filelist $arr
++    regsub -all -- {("?),\s+("?)} $filelist {\1 \2} filelist
++    regsub -all -- {\n} $filelist {} filelist
++    regsub -all -- {^\(} $filelist {} filelist
++    regsub -all -- {\)$} $filelist {} filelist
++
++    foreach file $filelist {
++        set filename [regsub -- {,$} $file {}]
++        lappend result $filename
++    }
++    return $result
++}
+diff --git a/tcl/pd_menus.tcl b/tcl/pd_menus.tcl
+index fc617df..5db3535 100644
+--- a/tcl/pd_menus.tcl
++++ b/tcl/pd_menus.tcl
+@@ -123,7 +123,7 @@ proc ::pd_menus::configure_for_dialog {mytoplevel} {
+ # ------------------------------------------------------------------------------
+ # menu building functions
+ proc ::pd_menus::build_file_menu {mymenu} {
+-    # run the platform-specific build_file_menu_* procs first, the config them
++    # run the platform-specific build_file_menu_* procs first, and config them
+     [format build_file_menu_%s $::windowingsystem] $mymenu
+     $mymenu entryconfigure [_ "New"]        -command {menu_new}
+     $mymenu entryconfigure [_ "Open"]       -command {menu_open}
+@@ -133,6 +133,8 @@ proc ::pd_menus::build_file_menu {mymenu} {
+     $mymenu entryconfigure [_ "Close"]      -command {menu_send_float $::focused_window menuclose 0}
+     $mymenu entryconfigure [_ "Message..."] -command {menu_message_dialog}
+     $mymenu entryconfigure [_ "Print..."]   -command {menu_print $::focused_window}
++    # update recent files
++    ::pd_menus::update_recentfiles_menu false
+ }
+ 
+ proc ::pd_menus::build_edit_menu {mymenu} {
+@@ -326,52 +328,68 @@ proc ::pd_menus::update_undo_on_menu {mytoplevel} {
+ }
+ 
+ # ------------------------------------------------------------------------------
+-# update the menu entries for opening recent files
+-proc ::pd_menus::update_recentfiles_menu {} {
++# update the menu entries for opening recent files (write arg should always be true except the first time when pd is opened)
++proc ::pd_menus::update_recentfiles_menu {{write true}} {
+     variable menubar
+     switch -- $::windowingsystem {
+-        "aqua" {::pd_menus::update_openrecent_menu_aqua .openrecent}
+-        "win32" {update_recentfiles_on_menu $menubar.file}
+-        "x11" {update_recentfiles_on_menu $menubar.file}
++        "aqua"  {::pd_menus::update_openrecent_menu_aqua .openrecent $write}
++        "win32" {::pd_menus::update_recentfiles_on_menu $menubar.file $write}
++        "x11"   {::pd_menus::update_recentfiles_on_menu $menubar.file $write}
+     }
+ }
+ 
+ proc ::pd_menus::clear_recentfiles_menu {} {
+     set ::recentfiles_list {}
+     ::pd_menus::update_recentfiles_menu
++    # empty recentfiles in preferences (write empty array)
++    ::pd_guiprefs::write_recentfiles
+ }
+ 
+-proc ::pd_menus::update_openrecent_menu_aqua {mymenu} {
++proc ::pd_menus::update_openrecent_menu_aqua {mymenu {write}} {
+     if {! [winfo exists $mymenu]} {menu $mymenu}
+     $mymenu delete 0 end
+-    $mymenu add  separator
+-    $mymenu add command -label [_ "Clear Menu"] \
+-        -command "::pd_menus::clear_recentfiles_menu"
+-    # newest need to be on top, but the list in oldest first, so insert
++
++    # now the list is last first so we just add
+     foreach filename $::recentfiles_list {
+-        $mymenu insert 0 command -label [file tail $filename] \
++        $mymenu add command -label [file tail $filename] \
+             -command "open_file {$filename}"
+     }
++    # clear button
++    $mymenu add  separator
++    $mymenu add command -label [_ "Clear Menu"] \
++        -command "::pd_menus::clear_recentfiles_menu"
++    # write to config file
++    if {$write == true} { ::pd_guiprefs::write_recentfiles }
+ }
+ 
++# ------------------------------------------------------------------------------
+ # this expects to be run on the File menu, and to insert above the last separator
+-proc ::pd_menus::update_recentfiles_on_menu {mymenu} {
++proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
+     set lastitem [$mymenu index end]
+     set i 1
+     while {[$mymenu type [expr $lastitem-$i]] ne "separator"} {incr i}
+     set bottom_separator [expr $lastitem-$i]
+     incr i
++
+     while {[$mymenu type [expr $lastitem-$i]] ne "separator"} {incr i}
+     set top_separator [expr $lastitem-$i]
+     if {$top_separator < [expr $bottom_separator-1]} {
+         $mymenu delete [expr $top_separator+1] [expr $bottom_separator-1]
+     }
+-    foreach filename $::recentfiles_list {
++    # insert the list from the end because we insert each element on the top
++    set i [llength $::recentfiles_list]
++    while {[incr i -1]} {
++        set filename [lindex $::recentfiles_list $i]
+         $mymenu insert [expr $top_separator+1] command \
+             -label [file tail $filename] -command "open_file {$filename}"
+     }
+-}
++    set filename [lindex $::recentfiles_list 0]
++    $mymenu insert [expr $top_separator+1] command \
++        -label [file tail $filename] -command "open_file {filename}"
+ 
++    # write to config file
++    if {$write == true} { ::pd_guiprefs::write_recentfiles }
++}
+ 
+ # ------------------------------------------------------------------------------
+ # lots of crazy recursion to update the Window menu
+@@ -481,7 +499,8 @@ proc ::pd_menus::build_file_menu_aqua {mymenu} {
+     variable accelerator
+     $mymenu add command -label [_ "New"]       -accelerator "$accelerator+N"
+     $mymenu add command -label [_ "Open"]      -accelerator "$accelerator+O"
+-    ::pd_menus::update_openrecent_menu_aqua .openrecent
++    # this is now done in main ::pd_menus::build_file_menu
++    #::pd_menus::update_openrecent_menu_aqua .openrecent
+     $mymenu add cascade -label [_ "Open Recent"] -menu .openrecent
+     $mymenu add  separator
+     $mymenu add command -label [_ "Close"]     -accelerator "$accelerator+W"
+@@ -583,4 +602,3 @@ proc ::pd_menus::build_window_menu_win32 {mymenu} {
+ }
+ 
+ # the "Help" does not have cross-platform differences
+-
+diff --git a/tcl/pdtk_canvas.tcl b/tcl/pdtk_canvas.tcl
+index c1a8542..8ff7b18 100644
+--- a/tcl/pdtk_canvas.tcl
++++ b/tcl/pdtk_canvas.tcl
+@@ -127,6 +127,8 @@ proc pdtk_canvas_saveas {name initialfile initialdir} {
+     set basename [file tail $filename]
+     pdsend "$name savetofile [enquote_path $basename] [enquote_path $dirname]"
+     set ::filenewdir $dirname
++    # add to fecentfiles
++    ::pd_guiprefs::update_recentfiles $filename
+ }
+ 
+ ##### ask user Save? Discard? Cancel?, and if so, send a message on to Pd ######
+diff --git a/tcl/pkgIndex.tcl b/tcl/pkgIndex.tcl
+index 5f4921b..0dc25e1 100644
+--- a/tcl/pkgIndex.tcl
++++ b/tcl/pkgIndex.tcl
+@@ -25,6 +25,7 @@ package ifneeded dialog_path 0.1 [list source [file join $dir dialog_path.tcl]]
+ package ifneeded dialog_startup 0.1 [list source [file join $dir dialog_startup.tcl]]
+ package ifneeded helpbrowser 0.1 [list source [file join $dir helpbrowser.tcl]]
+ package ifneeded opt_parser 0.1 [list source [file join $dir opt_parser.tcl]]
++package ifneeded pd_guiprefs 0.1 [list source [file join $dir pd_guiprefs.tcl]]
+ package ifneeded pdwindow 0.1 [list source [file join $dir pdwindow.tcl]]
+ package ifneeded pd_menucommands 0.1 [list source [file join $dir pd_menucommands.tcl]]
+ package ifneeded pd_menus 0.1 [list source [file join $dir pd_menus.tcl]]
+diff --git a/tcl/wheredoesthisgo.tcl b/tcl/wheredoesthisgo.tcl
+index 1e9e034..acee40c 100644
+--- a/tcl/wheredoesthisgo.tcl
++++ b/tcl/wheredoesthisgo.tcl
+@@ -6,15 +6,14 @@ package provide wheredoesthisgo 0.1
+ proc open_file {filename} {
+     set directory [file normalize [file dirname $filename]]
+     set basename [file tail $filename]
+-    if {[regexp -nocase -- "\.(pd|pat|mxt)$" $filename]} {
++    if {
++        [file exists $filename]
++        && [regexp -nocase -- "\.(pd|pat|mxt)$" $filename]
++    } then {
+         ::pdtk_canvas::started_loading_file [format "%s/%s" $basename $filename]
+         pdsend "pd open [enquote_path $basename] [enquote_path $directory]"
+-        # remove duplicates first, then the duplicate added after to the top
+-        set index [lsearch -exact $::recentfiles_list $filename]
+-        set ::recentfiles_list [lreplace $::recentfiles_list $index $index]
+-        lappend ::recentfiles_list $filename
+-        set ::recentfiles_list [lrange $::recentfiles_list 0 $::total_recentfiles]
+-        ::pd_menus::update_recentfiles_menu
++        # now this is done in pd_guiprefs
++        ::pd_guiprefs::update_recentfiles $filename
+     } {
+         ::pdwindow::post [format [_ "Ignoring '%s': doesn't look like a Pd-file"] $filename]
+     }
+-- 
+1.7.4.1
+
