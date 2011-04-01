@@ -1,0 +1,215 @@
+From c96f19f5e640a809628b8245a6bfde5c086f69ae Mon Sep 17 00:00:00 2001
+From: Yvan Volochine <yvan.volochine@gmail.com>
+Date: Sat, 2 Apr 2011 01:36:43 +0200
+Subject: [PATCH] auto-completion_ALPHA
+
+---
+ tcl/pd-gui.tcl        |    9 ++++++++
+ tcl/pd_bindings.tcl   |    3 ++
+ tcl/pd_completion.tcl |   50 +++++++++++++++++++++++++++++++++++++++---------
+ tcl/pdtk_canvas.tcl   |    7 ++++++
+ tcl/pdtk_text.tcl     |   34 +++++++++++++++++++++++++++++---
+ 5 files changed, 89 insertions(+), 14 deletions(-)
+
+diff --git a/tcl/pd-gui.tcl b/tcl/pd-gui.tcl
+index a36326d..ae75c32 100755
+--- a/tcl/pd-gui.tcl
++++ b/tcl/pd-gui.tcl
+@@ -216,6 +216,15 @@ set ::undo_toplevel "."
+ set ::new_object false
+ set ::current_text ""
+ set ::all_externals {}
++set ::completions {}
++set ::current_canvas ""
++set ::current_tag ""
++set ::lock_motion false
++set ::motionx 0
++set ::motiony 0
++set ::old_text ""
++set ::i 0
++set ::cycle false
+ 
+ #------------------------------------------------------------------------------#
+ # coding style
+diff --git a/tcl/pd_bindings.tcl b/tcl/pd_bindings.tcl
+index da98fbe..c3b43d5 100644
+--- a/tcl/pd_bindings.tcl
++++ b/tcl/pd_bindings.tcl
+@@ -266,6 +266,9 @@ proc ::pd_bindings::sendkey {window state key iso shift} {
+     set mytoplevel [winfo toplevel $window]
+     if {[winfo class $mytoplevel] eq "PatchWindow"} {
+         pdsend "$mytoplevel key $state $key $shift"
++        # auto-completion
++        # something was typed in so reset $::cycle
++        if {$key != 9} {set ::cycle false}
+     }
+     # TODO send to 'pd key' for global key events in Pd?
+ }
+diff --git a/tcl/pd_completion.tcl b/tcl/pd_completion.tcl
+index 6df00c5..5f9e81d 100644
+--- a/tcl/pd_completion.tcl
++++ b/tcl/pd_completion.tcl
+@@ -10,8 +10,7 @@ namespace eval ::pd_completion:: {
+ 
+ 
+ proc ::pd_completion::init {} {
+-    puts "init"
+-    list_externals
++    list_all_externals
+ }
+ 
+ proc ::pd_completion::trigger {} {
+@@ -21,13 +20,13 @@ proc ::pd_completion::trigger {} {
+     }
+ }
+ 
+-proc list_externals {} {
++proc list_all_externals {} {
+     # TODO: merge this with gui prefs
+-    list_pd_externals "~/.config/pure-data/pd_objects.conf"
++    list_pd_internals "~/.config/pure-data/pd_objects.conf"
+     list_user_externals
+ }
+ 
+-proc list_pd_externals {afile} {
++proc list_pd_internals {afile} {
+     set filename [file join $afile]
+     if {
+         [file exists $filename]
+@@ -54,14 +53,45 @@ proc list_user_externals {} {
+     }
+     # sort them for a quicker search later
+     set ::all_externals [lsort $::all_externals]
+-    puts "all: $::all_externals"
++    #puts "all: $::all_externals"
+     #::pd_guipref
+ }
+ 
+ proc find_external {text} {
+-    puts "searching for $text"
+-    if {$text ne ""} {
+-        set results [lsearch -all -inline -glob $::all_externals $text*]
++    #puts "searching for $text"
++    #puts "cycling is $::cycle"
++    set length [llength $::completions]
++
++    if {$text ne "" && $::cycle == false} {
++        set ::completions [lsearch -all -inline -glob $::all_externals $text*]
++        set ::old_text $text
++        set ::cycle true
++        set length [llength $::completions]
++        set ::i 0
++    }
++
++    if {$::cycle && $length > 0} {
++        if {$::i == $length} {
++            set new_text $::old_text
++            set ::i -1
++        } {
++            set new_text [lindex $::completions $::i]
++        }
++        write_text $new_text
++        set ::i [expr $::i + 1]
+     }
+-    puts "results: $results"
++}
++
++# write into an object box
++# simulate a dble-click to get "real" text selection and be able to replace it
++proc write_text {text} {
++    set mytoplevel [winfo toplevel $::current_canvas]
++    set x [expr $::motionx + 5]
++    set y [expr $::motiony + 5]
++    pdsend "$mytoplevel mouse [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1 0"
++    pdsend "$mytoplevel mouseup [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1"
++    pdsend "$mytoplevel mouse [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1 0"
++    pdsend "$mytoplevel mouseup [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1"
++    # write
++    pdtk_pastetext_completion $text
+ }
+\ No newline at end of file
+diff --git a/tcl/pdtk_canvas.tcl b/tcl/pdtk_canvas.tcl
+index c1a8542..cfea5be 100644
+--- a/tcl/pdtk_canvas.tcl
++++ b/tcl/pdtk_canvas.tcl
+@@ -159,11 +159,18 @@ proc ::pdtk_canvas::pdtk_canvas_menuclose {mytoplevel reply_to_pd} {
+ proc pdtk_canvas_motion {tkcanvas x y mods} {
+     set mytoplevel [winfo toplevel $tkcanvas]
+     pdsend "$mytoplevel motion [$tkcanvas canvasx $x] [$tkcanvas canvasy $y] $mods"
++    # FIXME (yvan) calling "if" that often looks nasty
++    if {$::lock_motion == false} {
++        set ::motionx $x
++        set ::motiony $y
++    }
+ }
+ 
+ proc pdtk_canvas_mouse {tkcanvas x y b f} {
+     set mytoplevel [winfo toplevel $tkcanvas]
+     pdsend "$mytoplevel mouse [$tkcanvas canvasx $x] [$tkcanvas canvasy $y] $b $f"
++    # auto-completion: save mouse position if we have a new object from CTRL-1
++    if {$::new_object} {set ::lock_motion true}
+ }
+ 
+ proc pdtk_canvas_mouseup {tkcanvas x y b} {
+diff --git a/tcl/pdtk_text.tcl b/tcl/pdtk_text.tcl
+index 2fc601d..c6cab90 100644
+--- a/tcl/pdtk_text.tcl
++++ b/tcl/pdtk_text.tcl
+@@ -18,6 +18,12 @@ proc pdtk_text_new {tkcanvas tags x y text font_size color} {
+         $tkcanvas bind $mytag <Control-a> "$tkcanvas icursor $mytag 0"
+         $tkcanvas bind $mytag <Control-e> "$tkcanvas icursor $mytag end"
+     }
++    # auto-completion: store the new object
++    set ::current_tag $mytag
++    #if {$::lock_motion} {
++    #    set ::motionx [expr $::motionx + 10]
++    #    set ::motiony [expr $::motiony + 10]
++    #}
+ }
+ 
+ # change the text in an existing text box
+@@ -25,6 +31,9 @@ proc pdtk_text_set {tkcanvas tag text} {
+     $tkcanvas itemconfig $tag -text $text
+     # store typed text for autocompletion
+     set ::current_text $text
++    set ::current_canvas $tkcanvas
++    # useless ?
++    set ::current_tag $tag
+ }
+ 
+ # paste into an existing text box by literally "typing" the contents of the
+@@ -49,9 +58,26 @@ proc pdtk_text_selectall {tkcanvas mytag} {
+ # de/activate a text box for editing based on $editing flag
+ proc pdtk_text_editing {mytoplevel tag editing} {
+     set tkcanvas [tkcanvas_name $mytoplevel]
+-    if {$editing == 0} {selection clear $tkcanvas}
++    if {$editing == 0} {
++        selection clear $tkcanvas
++	# auto-completion
++        set ::completions {}
++        set ::new_object false
++	set ::lock_motion false
++	set ::cycle false
++    } {
++        set ::editingtext($mytoplevel) $editing
++        # FIXME (yvan) I should use $::editingtext
++        set ::new_object $editing
++    }
+     $tkcanvas focus $tag
+-    set ::editingtext($mytoplevel) $editing
+-    # FIXME (yvan) I should use $::editingtext
+-    set ::new_object $editing
+ }
++
++# simulate a paste from pd_completion
++proc pdtk_pastetext_completion {txt} {
++    for {set i 0} {$i < [string length $txt]} {incr i 1} {
++        set cha [string index $txt $i]
++        scan $cha %c keynum
++        pdsend "pd key 1 $keynum 0"
++    }
++}
+\ No newline at end of file
+-- 
+1.7.4.1
+
