@@ -154,12 +154,12 @@ proc ::completion::popup {} {
     set left [expr $decoLeft + $::editx]
     set top [expr $decoTop + $::edity]
     # popup menu
-    catch { destroy .popup }
-    menu .popup -tearoff 0
+    catch { destroy .completion_popup }
+    menu .completion_popup -tearoff 0
     foreach name $::completions {
-        .popup add command -label $name -command "::completion::write_text $name"
+        .completion_popup add command -label $name -command "::completion::write_text $name"
     }
-    tk_popup .popup $left $top
+    tk_popup .completion_popup $left $top
 }
 
 # simulate backspace keys
