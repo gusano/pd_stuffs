@@ -1,9 +1,11 @@
 # META NAME auto-completion plugin
 # META DESCRIPTION Does auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
-# META VERSION 0.3
+# META VERSION 0.31
 
 # LIST OF CHANGES:
+# - added missing/mispelled objects (thanks Scott McCoid for spotting)
+# - bugfix: nameclash with tkcanvas popup (thanks Scott McCoid for spotting)
 # - added popup menu (!!!) (thanks Hans-Christoph Steiner for insisting =)
 # - fixed list objects (thanks Johathan Wilkes)
 # - added ::completion namespace (thanks Hans-Christoph Steiner)
@@ -56,12 +58,12 @@ vsnapshot~ env~ threshold~ bang~ fft~ ifft~ rfft~ rifft~ framp~ qlist \
 textfile openpanel savepanel key keyup keyname int float symbol bang send \
 receive sel route pack unpack trigger spigot moses until makefilename swap \
 change value bng pow max min mod div sin cos tan atan atan2 sqrt log exp \
-abs wrap clip toggle soundfiler readsf writesf tabwrite~ tabplay~ tabread~ \
+abs wrap clip toggle soundfiler readsf writesf~ tabwrite~ tabplay~ tabread~ \
 tabread4~ tabosc4~ tabsend tabreceive tabread tabread4 tabwrite send~ \
 receive~ catch~ throw~ get set getsize setsize append sublist netsend \
 netreceive nbx vslider clip~ rsqrt~ sqrt~ wrap~ mtof~ ftom~ dbtorms~ \
 rmstodb~ dbtopow~ powtodb~ pow~ exp~ log~ abs~ text vu delay metro line \
-timer pipe list}
+timer pipe list phasor~}
 
 
 
@@ -279,4 +281,4 @@ proc ::dialog_font::ok {gfxstub} {
 
 ::completion::init
 
-pdtk_post "loaded: autocompletion-plugin 0.3\n"
+pdtk_post "loaded: autocompletion-plugin 0.31\n"
