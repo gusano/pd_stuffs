@@ -1,9 +1,10 @@
 # META NAME auto-completion plugin
 # META DESCRIPTION Does auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
-# META VERSION 0.2
+# META VERSION 0.3
 
 # LIST OF CHANGES:
+# - added popup menu (!!!) (thanks Hans-Christoph Steiner for insisting =)
 # - fixed list objects (thanks Johathan Wilkes)
 # - added ::completion namespace (thanks Hans-Christoph Steiner)
 
@@ -16,6 +17,7 @@ namespace eval ::completion:: {}
 rename ::pd_bindings::sendkey ::pd_bindings::sendkey_old
 rename pdtk_text_set pdtk_text_set_old
 rename pdtk_text_editing pdtk_text_editing_old
+rename ::dialog_font::ok ::dialog_font::ok_old
 
 ###########################################################
 # GLOBALS
@@ -29,9 +31,11 @@ set ::user_objects_list "~/pd/list_of_my_objects.txt"
 
 set ::new_object false
 set ::current_canvas ""
+set ::current_tag ""
 set ::lock_motion false
 set ::editx 0
 set ::edity 0
+set ::font_size 10
 set ::current_text ""
 set ::first_text ""
 set ::erase_text ""
@@ -130,21 +134,32 @@ proc ::completion::find_external {} {
             set new_text [lindex $::completions $::i]
         }
         if {$::i == 0} { set ::erase_text $text }
-        ::completion::erase_previoustext
-        ::completion::write_text $new_text
-        #::completion::popup
+        # if there is one result, write it
+        # otherwise, bring the popup menu
+        if {$length == 1} {
+            ::completion::write_text $new_text
+        } {
+            ::completion::popup
+        }
         set ::i [expr $::i + 1]
     }
 }
 
 # experimental (for testing)
 proc ::completion::popup {} {
-    if {! [winfo exists .completepopup] } {
-        menu .completepopup
-        .completepopup add command -label mod -command bell
-        .completepopup add command -label moses -command bell
+    set mytoplevel [winfo toplevel $::current_canvas]
+    set geom [wm geometry $mytoplevel]
+    regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
+          width height decoLeft decoTop
+    set left [expr $decoLeft + $::editx]
+    set top [expr $decoTop + $::edity]
+    # popup menu
+    catch { destroy .popup }
+    menu .popup -tearoff 0
+    foreach name $::completions {
+        .popup add command -label $name -command "::completion::write_text $name"
     }
-    tk_popup .completepopup $::editx $::edity
+    tk_popup .popup $left $top
 }
 
 # simulate backspace keys
@@ -159,8 +174,12 @@ proc ::completion::erase_previoustext {} {
 }
 
 # write text into the object box
-proc ::completion::write_text {text} {
-    set mytoplevel [winfo toplevel $::current_canvas]
+proc ::completion::write_text {args} {
+    ::completion::erase_previoustext
+    set text ""
+    # in case of spaces
+    foreach arg $args { set text [concat $text $arg] }
+    # write letters (!)
     for {set i 0} {$i < [string length $text]} {incr i 1} {
         set cha [string index $text $i]
         scan $cha %c keynum
@@ -203,9 +222,11 @@ proc pdtk_text_set {tkcanvas tag text} {
     # auto-completion: store typed text
     set ::current_text $text
     set ::current_canvas $tkcanvas
+    set ::current_tag $tag
 }
 
-proc pdtk_text_editing {mytoplevel tag editing} {
+# not used anymore
+proc pdtk_text_editing_OLD {mytoplevel tag editing} {
     set tkcanvas [tkcanvas_name $mytoplevel]
     if {$editing == 0} {
         selection clear $tkcanvas
@@ -222,13 +243,13 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     $tkcanvas focus $tag
 }
 
-proc pdtk_text_editing_test {mytoplevel tag editing} {
+# thanks Hans-Christoph Steiner
+proc pdtk_text_editing {mytoplevel tag editing} {
     set tkcanvas [tkcanvas_name $mytoplevel]
     set rectcoords [$tkcanvas coords ${tag}R]
     if {$rectcoords ne ""} {
         set ::editx [expr int([lindex $rectcoords 0])]
-        set ::edity [expr int([lindex $rectcoords 1] - 20)]
-        pdtk_post "currently editing at: $::editx $::edity\n"
+        set ::edity [expr int([lindex $rectcoords 1]) + ($::font_size * 7)]
     }
     if {$editing == 0} {
         selection clear $tkcanvas
@@ -245,10 +266,17 @@ proc pdtk_text_editing_test {mytoplevel tag editing} {
     $tkcanvas focus $tag
 }
 
+proc ::dialog_font::ok {gfxstub} {
+    variable fontsize
+    apply $gfxstub $fontsize
+    cancel $gfxstub
+    # auto-completion
+    set $::font_size $fontsize
+}
 
 ###########################################################
 # main
 
 ::completion::init
 
-pdtk_post "loaded: autocompletion-plugin 0.2\n"
+pdtk_post "loaded: autocompletion-plugin 0.3\n"
