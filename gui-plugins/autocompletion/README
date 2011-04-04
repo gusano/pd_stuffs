@@ -1,0 +1,13 @@
+# autocompletion-plugin
+
+this plugin enables auto-completion for Pd objects.
+just hit the TAB key while typing into an object to cycle through
+possible completions.
+by default, only Pd internals are available.
+you can add your own objects/abstractions names by editing 
+autocompletion-plugin.tcl file. find the $::user_objects_list variable (in the 
+GLOBALS variables) and put there the path to your file. this file should contain
+one object name per line (no commas at the end of the line). if one of your
+objects name contains a space character, just put it inside (double) quotes.
+
+send bug reports: yvan dot volochine ((at)) gmail dot com
