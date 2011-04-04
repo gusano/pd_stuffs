@@ -125,43 +125,41 @@ proc ::completion::find_external {} {
         set ::cycle true
         set length [llength $::completions]
         set ::i 0
+        set trigger_popup 1
+    } {
+        # popup is already there
+        set trigger_popup 0
     }
 
-    if {$::cycle && $length > 0} {
-        if {$::i == $length} {
-            # return to what user first typed
-            set new_text $::first_text
-            set ::i -1
-        } {
-            set new_text [lindex $::completions $::i]
-        }
-        if {$::i == 0} { set ::erase_text $text }
-        # if there is one result, write it
-        # otherwise, bring the popup menu
-        if {$length == 1} {
-            ::completion::write_text $new_text
-        } {
-            ::completion::popup
-        }
-        set ::i [expr $::i + 1]
-    }
+     set new_text [lindex $::completions $::i]
+     if {$length == 1} {
+         ::completion::write_text $new_text
+     } {
+         ::completion::popup $::i $trigger_popup
+     }
+     set ::i [expr ($::i + 1) % $length]
 }
 
-# experimental (for testing)
-proc ::completion::popup {} {
-    set mytoplevel [winfo toplevel $::current_canvas]
-    set geom [wm geometry $mytoplevel]
-    regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
-          width height decoLeft decoTop
-    set left [expr $decoLeft + $::editx]
-    set top [expr $decoTop + $::edity]
-    # popup menu
-    catch { destroy .completion_popup }
-    menu .completion_popup -tearoff 0
-    foreach name $::completions {
-        .completion_popup add command -label $name -command "::completion::write_text $name"
+
+proc ::completion::popup {i {trigger 0}} {
+    if {$trigger} {
+        set mytoplevel [winfo toplevel $::current_canvas]
+        set geom [wm geometry $mytoplevel]
+        regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
+              width height decoLeft decoTop
+        set left [expr $decoLeft + $::editx]
+        set top [expr $decoTop + $::edity]
+        # popup menu
+        catch { destroy .completion_popup }
+        menu .completion_popup -tearoff 0
+        foreach name $::completions {
+            .completion_popup add command -label $name -command "::completion::write_text $name"
+        }
+        tk_popup .completion_popup $left $top
+        .completion_popup entryconfigure 0 -state active
+    } {
+        .completion_popup entryconfigure $i -state active
     }
-    tk_popup .completion_popup $left $top
 }
 
 # simulate backspace keys
