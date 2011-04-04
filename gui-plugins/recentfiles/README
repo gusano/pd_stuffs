@@ -1,0 +1,9 @@
+# recentfiles-plugin
+
+this adds support for recently opened files in Pd.
+Pd will remember the recent files when quitting/restarting.
+
+the files list is stored in ~/.config/pure-data on linux, registry on windows and 
+~/Library/Preferences/org.puredata.plist on mac.
+
+send bugreports: yvan dot volochine ((at)) gmail dot com
