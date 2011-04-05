@@ -1,7 +1,7 @@
 # META NAME auto-complete plugin
 # META DESCRIPTION Does auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.pd@mail.com
-# META VERSION 0.1
+# META VERSION 0.11
 
 package require Tcl 8.4
 
@@ -10,6 +10,8 @@ namespace eval ::pd_guiprefs:: {
     namespace export write_recentfiles
     namespace export update_recentfiles
 }
+
+namespace eval ::recentfiles:: {}
 
 # TODO:
 # - list overwritten procedures
@@ -33,11 +35,11 @@ set ::recentfiles_domain ""
 # ------------------------------------------------------------------------------
 # init preferences
 #
-proc init {} {
+proc ::recentfiles::init {} {
     switch -- $::windowingsystem {
-        "aqua"  { init_aqua }
-        "win32" { init_win }
-        "x11"   { init_x11 }
+        "aqua"  { ::recentfiles::init_aqua }
+        "win32" { ::recentfiles::init_win }
+        "x11"   { ::recentfiles::init_x11 }
     }
     # assign gui preferences
     # osx special case for arrays
@@ -46,24 +48,24 @@ proc init {} {
     ::pd_menus::update_recentfiles_menu false
 }
 
-proc init_aqua {} {
+proc ::recentfiles::init_aqua {} {
     # osx has a "Open Recent" menu with 10 recent files (others have 5 inlined)
     set ::recentfiles_domain org.puredata
     set ::recentfiles_key "NSRecentDocuments"
     set ::total_recentfiles 10
 }
 
-proc init_win {} {
+proc ::recentfiles::init_win {} {
     # windows uses registry
     set ::recentfiles_domain "HKEY_CURRENT_USER\\Software\\Pure-Data"
     set ::recentfiles_key "RecentDocs"
 }
 
-proc init_x11 {} {
+proc ::recentfiles::init_x11 {} {
     # linux uses ~/.config/pure-data dir
     set ::recentfiles_domain "~/.config/pure-data"
     set ::recentfiles_key "recentfiles.conf"
-    prepare_configdir
+    ::recentfiles::prepare_configdir
 }
 
 # ------------------------------------------------------------------------------
@@ -138,11 +140,16 @@ proc get_config_aqua {adomain {akey} {arr false}} {
 # win: read in the registry
 #
 proc get_config_win {adomain {akey} {arr false}} {
-    pacḱage require registry
-    if {![catch {registry get $adomain $akey} conf]} {
-        return [expr {$conf}]
+    if {![catch {package require registry}]} {
+        if {![catch {registry get $adomain $akey} conf]} {
+            return [expr {$conf}]
+        } {
+            return {}
+        }
     } {
         return {}
+        ::pdwindow::error "ERROR:\nrecentfiles-plugin: package \
+            'registry' was not found\n"
     }
 }
 
@@ -188,16 +195,20 @@ proc write_config_aqua {data {adomain} {akey} {arr false}} {
 # if $arr is true, we write an array
 #
 proc write_config_win {data {adomain} {akey} {arr false}} {
-    pacḱage require registry
-    # FIXME
-    if {$arr} {
-        if {[catch {registry set $adomain $akey $data multi_sz} errorMsg]} {
-            puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
+    if {![catch {package require registry}]} {
+        # FIXME
+        if {$arr} {
+            if {[catch {registry set $adomain $akey $data multi_sz} errorMsg]} {
+                puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
+            }
+        } {
+            if {[catch {registry set $adomain $akey $data sz} errorMsg]} {
+                puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
+            }
         }
     } {
-        if {[catch {registry set $adomain $akey $data sz} errorMsg]} {
-            puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
-        }
+        ::pdwindow::verbose 1 "WARNING:\nrecentfiles-plugin: package \
+            'registry' was not found\n"
     }
 }
 
@@ -209,7 +220,7 @@ proc write_config_x11 {data {adomain} {akey}} {
     set data [join $data "\n"]
     set filename [file join $adomain $akey]
     if {[catch {set fl [open $filename w]} errorMsg]} {
-        puts stderr "ERROR: write_config_x11 $data $akey: $errorMsg"
+        ::pdwindow::error "ERROR:\nwrite_config_x11 $data $akey: $errorMsg\n"
     } {
         puts -nonewline $fl $data
         close $fl
@@ -223,10 +234,10 @@ proc write_config_x11 {data {adomain} {akey}} {
 # ------------------------------------------------------------------------------
 # linux only! : look for pd config directory and create it if needed
 #
-proc prepare_configdir {} {
+proc ::recentfiles::prepare_configdir {} {
     if {[file isdirectory $::recentfiles_domain] != 1} {
         file mkdir $::recentfiles_domain
-        puts "$::recentfiles_domain was created.\n"
+        ::pdwindow::verbose 1 "$::recentfiles_domain was created.\n"
     }
 }
 
@@ -326,7 +337,14 @@ proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
         -label [file tail $filename] -command "open_file {filename}"
 
     # write to config file
-    if {$write == true} { ::pd_guiprefs::write_recentfiles }
+    if {$write == true} {
+        if {$::windowingsystem eq "win32" && [catch {package require registry}]} {
+            ::pdwindow::error "ERROR:\nrecentfiles-plugin cannot find \
+                'registry' package\n"
+        } {
+            ::pd_guiprefs::write_recentfiles
+        }
+    }
 }
 
 
@@ -375,6 +393,6 @@ proc open_file {filename} {
     }
 }
 
-init
+::recentfiles::init
 
-pdtk_post "loaded: recentfiles-plugin 0.1\n"
+pdtk_post "loaded: recentfiles-plugin 0.11\n"
