@@ -5,9 +5,38 @@ just hit the TAB key while typing into an object to cycle through
 possible completions.
 by default, only Pd internals are available.
 you can add your own objects/abstractions names by editing 
-autocompletion-plugin.tcl file. find the $::user_objects_list variable (in the 
-GLOBALS variables) and put there the path to your file. this file should contain
-one object name per line (no commas at the end of the line). if one of your
-objects name contains a space character, just put it inside (double) quotes.
+autocompletion-plugin.tcl file. find the $::user_objects_list
+variable (in the GLOBALS variables) and put there the path to your
+file. this file should contain one object name per line (no commas
+at the end of the line). if one of your objects name contains
+space characters, just put it inside quotes.
 
-send bug reports: yvan dot volochine ((at)) gmail dot com
+
+send bug reports: yvan.volochine@gmail.com
+
+------------------------------------------------------------------
+
+version history:
+
+
+0.32:
+- added colors
+- FIX: cycling had 1 step too much
+- FIX: first completed didn't erase already typed text
+
+0.31:
+- now TAB also cycles through the list
+
+0.3:
+- simplified cycling code
+- FIX: nameclash with right-click popup (sic)
+- FIX: missing/mispelled internals
+
+0.2:
+- added popup menu for completion
+
+0.12:
+- better namespace
+
+0.1:
+- first commit

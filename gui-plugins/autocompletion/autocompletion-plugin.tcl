@@ -3,14 +3,6 @@
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
 # META VERSION 0.32
 
-# LIST OF CHANGES:
-# - now TAB cycles through the list
-# - added missing/mispelled objects (thanks Scott McCoid for spotting)
-# - bugfix: nameclash with tkcanvas popup (thanks Scott McCoid for spotting)
-# - added popup menu (!!!) (thanks Hans-Christoph Steiner for insisting =)
-# - fixed list objects (thanks Johathan Wilkes)
-# - added ::completion namespace (thanks Hans-Christoph Steiner)
-
 package require Tcl 8.4
 
 namespace eval ::completion:: {}
