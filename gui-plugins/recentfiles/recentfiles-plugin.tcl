@@ -56,9 +56,10 @@ proc ::recentfiles::init_aqua {} {
 }
 
 proc ::recentfiles::init_win {} {
-    # windows uses registry
+    # windows uses registry if available
     set ::recentfiles_domain "HKEY_CURRENT_USER\\Software\\Pure-Data"
     set ::recentfiles_key "RecentDocs"
+    pdtk_post "Warning: recentfiles-plugin is buggy on windows!\n"
 }
 
 proc ::recentfiles::init_x11 {} {
@@ -84,7 +85,8 @@ proc ::pd_guiprefs::update_recentfiles {afile} {
     set ::recentfiles_list [lreplace $::recentfiles_list $index $index]
     # insert new one in the beginning and crop the list
     set ::recentfiles_list [linsert $::recentfiles_list 0 $afile]
-    set ::recentfiles_list [lrange $::recentfiles_list 0 $::total_recentfiles]
+    set ::recentfiles_list [lrange $::recentfiles_list 0 \
+        [expr $::total_recentfiles - 1]]
     ::pd_menus::update_recentfiles_menu
 }
 
@@ -198,13 +200,9 @@ proc write_config_win {data {adomain} {akey} {arr false}} {
     if {![catch {package require registry}]} {
         # FIXME
         if {$arr} {
-            if {[catch {registry set $adomain $akey $data multi_sz} errorMsg]} {
-                puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
-            }
+            registry set $adomain $akey $data multi_sz
         } {
-            if {[catch {registry set $adomain $akey $data sz} errorMsg]} {
-                puts stderr "ERROR: write_config_win $data $akey: $errorMsg"
-            }
+            registry set $adomain $akey $data sz
         }
     } {
         ::pdwindow::verbose 1 "WARNING:\nrecentfiles-plugin: package \
@@ -259,8 +257,6 @@ proc plist_array_to_tcl_list {arr} {
     return $result
 }
 
-
-# this does not work
 proc ::pd_menus::build_file_menu {mymenu} {
     # run the platform-specific build_file_menu_* procs first, and config them
     [format build_file_menu_%s $::windowingsystem] $mymenu
@@ -329,12 +325,17 @@ proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
     set i [llength $::recentfiles_list]
     while {[incr i -1]} {
         set filename [lindex $::recentfiles_list $i]
+        set basename [file tail $filename]
+        set j [expr $i + 1]
         $mymenu insert [expr $top_separator+1] command \
-            -label [file tail $filename] -command "open_file {$filename}"
+            -label [concat "$j. " $basename] -command \
+            "open_file {$filename}" -underline 0
     }
     set filename [lindex $::recentfiles_list 0]
+    set basename [file tail $filename]
     $mymenu insert [expr $top_separator+1] command \
-        -label [file tail $filename] -command "open_file {filename}"
+        -label [concat "1. " $basename] -command \
+        "open_file {$filename}" -underline 0
 
     # write to config file
     if {$write == true} {

@@ -7,6 +7,8 @@ the files list is stored in ~/.config/pure-data on linux,
 registry on windows (if available) and
 ~/Library/Preferences/org.puredata.plist on mac.
 
+
+
 send bugreports: yvan dot volochine ((at)) gmail dot com
 
 
@@ -19,7 +21,10 @@ version history:
 
 
 0.11:
+- added keyboard shortcuts (1..5) for recent files
 - better error handling when win32 tcl package regitry is missing
+- FIX bad max numbers of recent
+- FIX nasty typo
 
 0.1:
 - first commit
