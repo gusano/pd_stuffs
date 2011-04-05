@@ -1,9 +1,10 @@
 # META NAME auto-completion plugin
-# META DESCRIPTION Does auto-completion for objects
+# META DESCRIPTION enables auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
 # META VERSION 0.31
 
 # LIST OF CHANGES:
+# - now TAB cycles through the list
 # - added missing/mispelled objects (thanks Scott McCoid for spotting)
 # - bugfix: nameclash with tkcanvas popup (thanks Scott McCoid for spotting)
 # - added popup menu (!!!) (thanks Hans-Christoph Steiner for insisting =)
@@ -117,8 +118,9 @@ proc ::completion::list_user_objects {afile} {
 proc ::completion::find_external {} {
     set length [llength $::completions]
     set text $::current_text
-    
+
     if {$text ne "" && $::cycle == false} {
+        set ::erase_text $text
         set ::completions [lsearch -all -inline -glob $::all_externals $text*]
         # to retrieve typed text after cycling through all possible completions
         set ::first_text $::current_text
@@ -131,13 +133,15 @@ proc ::completion::find_external {} {
         set trigger_popup 0
     }
 
-     set new_text [lindex $::completions $::i]
-     if {$length == 1} {
-         ::completion::write_text $new_text
-     } {
-         ::completion::popup $::i $trigger_popup
-     }
-     set ::i [expr ($::i + 1) % $length]
+    set new_text [lindex $::completions $::i]
+    if {$length > 0} {
+        if {$length == 1} {
+            ::completion::write_text $new_text
+        } {
+            ::completion::popup $::i $trigger_popup
+        }
+        set ::i [expr ($::i + 1) % $length]
+    }
 }
 
 
@@ -153,7 +157,10 @@ proc ::completion::popup {i {trigger 0}} {
         catch { destroy .completion_popup }
         menu .completion_popup -tearoff 0
         foreach name $::completions {
-            .completion_popup add command -label $name -command "::completion::write_text $name"
+            .completion_popup add command -label $name -command \
+                "::completion::write_text $name" -activebackground \
+                "#222222" -activeforeground "#DDDDDD" -background \
+                "#DDDDDD" -foreground "#222222"
         }
         tk_popup .completion_popup $left $top
         .completion_popup entryconfigure 0 -state active
