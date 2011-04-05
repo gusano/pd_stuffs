@@ -1,7 +1,7 @@
 # META NAME auto-completion plugin
 # META DESCRIPTION enables auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
-# META VERSION 0.32
+# META VERSION 0.33
 
 package require Tcl 8.4
 
@@ -138,13 +138,14 @@ proc ::completion::find_external {} {
 
 
 proc ::completion::popup {i {trigger 0}} {
+    set menuheight 56
     if {$trigger} {
         set mytoplevel [winfo toplevel $::current_canvas]
         set geom [wm geometry $mytoplevel]
         regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
               width height decoLeft decoTop
         set left [expr $decoLeft + $::editx]
-        set top [expr $decoTop + $::edity]
+        set top [expr $decoTop + $::edity + $menuheight]
         # popup menu
         catch { destroy .completion_popup }
         menu .completion_popup -tearoff 0
@@ -245,10 +246,10 @@ proc pdtk_text_editing_OLD {mytoplevel tag editing} {
 # thanks Hans-Christoph Steiner
 proc pdtk_text_editing {mytoplevel tag editing} {
     set tkcanvas [tkcanvas_name $mytoplevel]
-    set rectcoords [$tkcanvas coords ${tag}R]
+    set rectcoords [$tkcanvas bbox $tag]
     if {$rectcoords ne ""} {
         set ::editx [expr int([lindex $rectcoords 0])]
-        set ::edity [expr int([lindex $rectcoords 1]) + ($::font_size * 7)]
+        set ::edity [expr int([lindex $rectcoords 3])]
     }
     if {$editing == 0} {
         selection clear $tkcanvas
@@ -278,4 +279,4 @@ proc ::dialog_font::ok {gfxstub} {
 
 ::completion::init
 
-pdtk_post "loaded: autocompletion-plugin 0.32\n"
+pdtk_post "loaded: autocompletion-plugin 0.33\n"

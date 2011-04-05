@@ -19,13 +19,17 @@ send bug reports: yvan.volochine@gmail.com
 version history:
 
 
+0.33:
+- better box coordinates
+- FIX: popup menu was wrongly placed with huge fonts
+
 0.32:
 - added colors
 - FIX: cycling had 1 step too much
-- FIX: first completed didn't erase already typed text
+- FIX: first completed didn't erase typed text
 
 0.31:
-- now TAB also cycles through the list
+- added TAB support to cycle through completions
 
 0.3:
 - simplified cycling code
