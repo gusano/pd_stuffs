@@ -1,7 +1,7 @@
 # META NAME auto-completion plugin
 # META DESCRIPTION enables auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
-# META VERSION 0.31
+# META VERSION 0.32
 
 # LIST OF CHANGES:
 # - now TAB cycles through the list
@@ -286,4 +286,4 @@ proc ::dialog_font::ok {gfxstub} {
 
 ::completion::init
 
-pdtk_post "loaded: autocompletion-plugin 0.31\n"
+pdtk_post "loaded: autocompletion-plugin 0.32\n"
