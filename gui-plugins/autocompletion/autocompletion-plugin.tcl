@@ -138,7 +138,8 @@ proc ::completion::find_external {} {
 
 
 proc ::completion::popup {i {trigger 0}} {
-    set menuheight 56
+    set menuheight 32
+    if {$::windowingsystem ne "aqua"} { incr menuheight 24 }
     if {$trigger} {
         set mytoplevel [winfo toplevel $::current_canvas]
         set geom [wm geometry $mytoplevel]
@@ -169,7 +170,7 @@ proc ::completion::erase_previoustext {} {
     while {$i > 0} {
         pdsend "$mytoplevel key 1 8 0"
         pdsend "$mytoplevel key 0 8 0"
-        set i [expr {$i - 1}]
+        incr i -1
     }
 }
 
@@ -221,62 +222,4 @@ proc pdtk_text_set {tkcanvas tag text} {
     $tkcanvas itemconfig $tag -text $text
     # auto-completion: store typed text
     set ::current_text $text
-    set ::current_canvas $tkcanvas
-    set ::current_tag $tag
 }
-
-# not used anymore
-proc pdtk_text_editing_OLD {mytoplevel tag editing} {
-    set tkcanvas [tkcanvas_name $mytoplevel]
-    if {$editing == 0} {
-        selection clear $tkcanvas
-        # auto-completion
-        set ::completions {}
-        set ::new_object false
-        set ::lock_motion false
-        set ::cycle false
-    } {
-        set ::editingtext($mytoplevel) $editing
-        # auto-completion
-        set ::new_object $editing
-    }
-    $tkcanvas focus $tag
-}
-
-# thanks Hans-Christoph Steiner
-proc pdtk_text_editing {mytoplevel tag editing} {
-    set tkcanvas [tkcanvas_name $mytoplevel]
-    set rectcoords [$tkcanvas bbox $tag]
-    if {$rectcoords ne ""} {
-        set ::editx [expr int([lindex $rectcoords 0])]
-        set ::edity [expr int([lindex $rectcoords 3])]
-    }
-    if {$editing == 0} {
-        selection clear $tkcanvas
-        # auto-completion
-        set ::completions {}
-        set ::new_object false
-        set ::lock_motion false
-        set ::cycle false
-    } {
-        set ::editingtext($mytoplevel) $editing
-        # auto-completion
-        set ::new_object $editing
-    }
-    $tkcanvas focus $tag
-}
-
-proc ::dialog_font::ok {gfxstub} {
-    variable fontsize
-    apply $gfxstub $fontsize
-    cancel $gfxstub
-    # auto-completion
-    set $::font_size $fontsize
-}
-
-###########################################################
-# main
-
-::completion::init
-
-pdtk_post "loaded: autocompletion-plugin 0.33\n"

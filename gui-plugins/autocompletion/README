@@ -20,6 +20,7 @@ version history:
 
 
 0.33:
+- cosmetic fixes osx
 - better box coordinates
 - FIX: popup menu was wrongly placed with huge fonts
 
