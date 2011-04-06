@@ -223,3 +223,43 @@ proc pdtk_text_set {tkcanvas tag text} {
     # auto-completion: store typed text
     set ::current_text $text
 }
+
+# thanks Hans-Christoph Steiner
+proc pdtk_text_editing {mytoplevel tag editing} {
+    set tkcanvas [tkcanvas_name $mytoplevel]
+    set rectcoords [$tkcanvas bbox $tag]
+    if {$rectcoords ne ""} {
+        set ::editx [expr int([lindex $rectcoords 0])]
+        set ::edity [expr int([lindex $rectcoords 3])]
+    }
+    if {$editing == 0} {
+        selection clear $tkcanvas
+        # auto-completion
+        set ::completions {}
+        set ::new_object false
+        set ::lock_motion false
+        set ::cycle false
+    } {
+        set ::editingtext($mytoplevel) $editing
+        # auto-completion
+        set ::new_object $editing
+        set ::current_canvas $tkcanvas
+        set ::current_tag $tag
+    }
+    $tkcanvas focus $tag
+}
+
+proc ::dialog_font::ok {gfxstub} {
+    variable fontsize
+    apply $gfxstub $fontsize
+    cancel $gfxstub
+    # auto-completion
+    set $::font_size $fontsize
+}
+
+###########################################################
+# main
+
+::completion::init
+
+pdtk_post "loaded: autocompletion-plugin 0.33\n"
