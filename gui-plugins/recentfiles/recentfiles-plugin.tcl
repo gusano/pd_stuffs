@@ -370,6 +370,25 @@ proc ::pd_menus::build_file_menu_aqua {mymenu} {
  
 
 proc pdtk_canvas_saveas {name initialfile initialdir} {
+    if { ! [file isdirectory $initialdir]} {set initialdir $::env(HOME)}
+    set filename [tk_getSaveFile -initialfile $initialfile -initialdir $initialdir \
+                      -defaultextension .pd -filetypes $::filetypes]
+    if {$filename eq ""} return; # they clicked cancel
+
+    set extension [file extension $filename]
+    set oldfilename $filename
+    set filename [regsub -- "$extension$" $filename [string tolower $extension]]
+    if { ! [regexp -- "\.(pd|pat|mxt)$" $filename]} {
+        # we need the file extention even on Mac OS X
+        set filename $filename.pd
+    }
+    # test again after downcasing and maybe adding a ".pd" on the end
+    if {$filename ne $oldfilename && [file exists $filename]} {
+        set answer [tk_messageBox -type okcancel -icon question -default cancel\
+                        -message [_ "\"$filename\" already exists. Do you want to replace it?"]]
+        if {$answer eq "cancel"} return; # they clicked cancel
+    }
+    set dirname [file dirname $filename]
     set basename [file tail $filename]
     pdsend "$name savetofile [enquote_path $basename] [enquote_path $dirname]"
     set ::filenewdir $dirname
