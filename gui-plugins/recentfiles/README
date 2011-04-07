@@ -20,6 +20,9 @@ send bugreports: yvan dot volochine ((at)) gmail dot com
 version history:
 
 
+0.12:
+- FIX proc was cut (pdtk_saveas)
+
 0.11:
 - added keyboard shortcuts (1..5) for recent files
 - better error handling when win32 tcl package regitry is missing

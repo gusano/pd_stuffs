@@ -1,7 +1,7 @@
 # META NAME auto-complete plugin
 # META DESCRIPTION Does auto-completion for objects
 # META AUTHOR <Yvan Volochine> yvan.pd@mail.com
-# META VERSION 0.11
+# META VERSION 0.12
 
 package require Tcl 8.4
 
@@ -415,4 +415,4 @@ proc open_file {filename} {
 
 ::recentfiles::init
 
-pdtk_post "loaded: recentfiles-plugin 0.11\n"
+pdtk_post "loaded: recentfiles-plugin 0.12\n"
