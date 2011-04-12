@@ -45,7 +45,9 @@ proc ::recentfiles::init {} {
     # osx special case for arrays
     set arr [expr { $::windowingsystem eq "aqua" }]
     set ::recentfiles_list [get_config $::recentfiles_domain $::recentfiles_key $arr]
-    ::pd_menus::update_recentfiles_menu false
+    if {[llength $::recentfiles_list] > 0} {
+        ::pd_menus::update_recentfiles_menu false
+    }
 }
 
 proc ::recentfiles::init_aqua {} {
@@ -57,9 +59,15 @@ proc ::recentfiles::init_aqua {} {
 
 proc ::recentfiles::init_win {} {
     # windows uses registry if available
-    set ::recentfiles_domain "HKEY_CURRENT_USER\\Software\\Pure-Data"
-    set ::recentfiles_key "RecentDocs"
-    pdtk_post "Warning: recentfiles-plugin is buggy on windows!\n"
+    # FIXME: no package `registry' available on pd tcl right now so we use the
+    # same behavior as on linux and write to ~/AppData/Local/Pure-Data/RecentDocs.txt
+    #set ::recentfiles_domain "HKEY_CURRENT_USER\\Software\\Pure-Data"
+    #set ::recentfiles_key "RecentDocs"
+    #pdtk_post "Warning: recentfiles-plugin is buggy on windows!\n"
+    set ::recentfiles_domain "~/AppData/Local/Pure-Data"
+    set ::recentfiles_key "RecentDocs.txt"
+    # FIXME: this should not be there if registry becomes available
+    ::recentfiles::prepare_configdir
 }
 
 proc ::recentfiles::init_x11 {} {
@@ -100,7 +108,7 @@ proc ::pd_guiprefs::update_recentfiles {afile} {
 proc get_config {adomain {akey} {arr}} {
     switch -- $::windowingsystem {
         "aqua"  { set conf [get_config_aqua $adomain $akey $arr] }
-        "win32" { set conf [get_config_win $adomain $akey $arr] }
+        "win32" { set conf [get_config_x11 $adomain $akey $arr] }
         "x11"   { set conf [get_config_x11 $adomain $akey $arr] }
     }
     return $conf
@@ -113,7 +121,7 @@ proc get_config {adomain {akey} {arr}} {
 proc write_config {data {adomain} {akey} {arr false}} {
     switch -- $::windowingsystem {
         "aqua"  { write_config_aqua $data $adomain $akey $arr }
-        "win32" { write_config_win $data $adomain $akey $arr }
+        "win32" { write_config_x11 $data $adomain $akey }
         "x11"   { write_config_x11 $data $adomain $akey }
     }
 }
@@ -234,8 +242,12 @@ proc write_config_x11 {data {adomain} {akey}} {
 #
 proc ::recentfiles::prepare_configdir {} {
     if {[file isdirectory $::recentfiles_domain] != 1} {
-        file mkdir $::recentfiles_domain
-        ::pdwindow::verbose 1 "$::recentfiles_domain was created.\n"
+        if {! [catch {file mkdir $::recentfiles_domain}] } {
+            ::pdwindow::verbose 1 "$::recentfiles_domain was created.\n"
+        } {
+            ::pdwindow::error "ERROR:\nrecentfiles-plugin could not create \
+                $::recentfiles_domain\n"
+        }
     }
 }
 
