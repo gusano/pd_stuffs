@@ -350,14 +350,7 @@ proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
         "open_file {$filename}" -underline 0
 
     # write to config file
-    if {$write == true} {
-        if {$::windowingsystem eq "win32" && [catch {package require registry}]} {
-            ::pdwindow::error "ERROR:\nrecentfiles-plugin cannot find \
-                'registry' package\n"
-        } {
-            ::pd_guiprefs::write_recentfiles
-        }
-    }
+    if {$write == true} { ::pd_guiprefs::write_recentfiles }
 }
 
 
