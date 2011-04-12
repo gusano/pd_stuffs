@@ -19,6 +19,9 @@ send bugreports: yvan dot volochine ((at)) gmail dot com
 
 version history:
 
+0.13:
+- FIX win users now have linux behavior (no more registry)
+- FIX pd would hang if plugin was launched without saved file
 
 0.12:
 - FIX proc was cut (pdtk_saveas)
