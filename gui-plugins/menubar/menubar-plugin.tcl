@@ -12,7 +12,7 @@ proc recreate_menubar {} {
     .menubar delete 0 6
 
     set menulist "file edit put find media window help"
-    foreach mymenu $menulist {    
+    foreach mymenu $menulist {
         if {$mymenu eq "find"} {
             set underlined 3
         } {
@@ -28,5 +28,5 @@ if {$::windowingsystem eq "x11"} {
     recreate_menubar
     pdtk_post "loaded: menubar-plugin 0.1\n"
 } {
-    pdtk_post "WARNING:\nmenubar-plugin is not osx or win32 compatible\n"
+    pdtk_post "WARNING:\nmenubar-plugin is for linux only\n"
 }
