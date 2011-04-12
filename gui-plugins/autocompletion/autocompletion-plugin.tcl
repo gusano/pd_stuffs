@@ -39,7 +39,7 @@ set ::cycle false
 set ::completions {}
 # all pd internals (hopefully)
 set ::all_externals {random loadbang namecanvas serial cputime realtime \
-canvas declare template curve plot drawnumber vradio declare mtof ftom \
+canvas declare template curve plot drawnumber vradio mtof ftom \
 rmstodb powtodb dbtopow dbtorms max~ min~ delwrite~ delread~ vd~ inlet~ \
 outlet~ block samplerate~ inlet midiin sysexin notein ctlin pgmin bendin \
 touchin polytouchin midiclkin midirealtimein midiout noteout ctlout pgmout \
@@ -56,13 +56,13 @@ tabread4~ tabosc4~ tabsend tabreceive tabread tabread4 tabwrite send~ \
 receive~ catch~ throw~ get set getsize setsize append sublist netsend \
 netreceive nbx vslider clip~ rsqrt~ sqrt~ wrap~ mtof~ ftom~ dbtorms~ \
 rmstodb~ dbtopow~ powtodb~ pow~ exp~ log~ abs~ text vu delay metro line \
-timer pipe list phasor~}
+timer pipe list phasor~ struct}
 
 
 
 proc ::completion::init {} {
     # bind Tab for autocompletion
-    bind all <Tab> {::completion::trigger}
+    bind all <Tab> {+::completion::trigger}
     ::completion::list_user_externals
     ::completion::list_user_objects $::user_objects_list
     # sort objects list for a quicker search later
@@ -71,10 +71,14 @@ proc ::completion::init {} {
 
 proc ::completion::trigger {} {
     if {$::new_object} {
-        # remove whitespaces
-        set ::current_text [string map {" " ""} $::current_text]
-        ::completion::find_external
+        # remove trailing spaces
+        set ::current_text [::completion::cleantext $::current_text]
+        ::completion::find_completions
     }
+}
+
+proc ::completion::cleantext {text} {
+    return [string trimright $text " "]
 }
 
 proc ::completion::list_user_externals {} {
@@ -107,18 +111,22 @@ proc ::completion::list_user_objects {afile} {
     }
 }
 
-proc ::completion::find_external {} {
+proc ::completion::update_completions {text} {
+    set ::erase_text $text
+    set ::completions [lsearch -all -inline -glob $::all_externals $text*]
+    # to retrieve typed text after cycling through all possible completions
+    set ::first_text $::current_text
+    set ::cycle true
+    set ::i 0
+}
+
+proc ::completion::find_completions {} {
     set length [llength $::completions]
     set text $::current_text
 
     if {$text ne "" && $::cycle == false} {
-        set ::erase_text $text
-        set ::completions [lsearch -all -inline -glob $::all_externals $text*]
-        # to retrieve typed text after cycling through all possible completions
-        set ::first_text $::current_text
-        set ::cycle true
+        ::completion::update_completions $text
         set length [llength $::completions]
-        set ::i 0
         set trigger_popup 1
     } {
         # popup is already there
@@ -132,12 +140,12 @@ proc ::completion::find_external {} {
         } {
             ::completion::popup $::i $trigger_popup
         }
-        set ::i [expr ($::i + 1) % $length]
+        set ::i [expr {($::i + 1) % $length}]
     }
 }
 
 
-proc ::completion::popup {i {trigger 0}} {
+proc ::completion::popup {i {trigger 0} {retrigger 0}} {
     set menuheight 32
     if {$::windowingsystem ne "aqua"} { incr menuheight 24 }
     if {$trigger} {
@@ -145,21 +153,66 @@ proc ::completion::popup {i {trigger 0}} {
         set geom [wm geometry $mytoplevel]
         regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
               width height decoLeft decoTop
-        set left [expr $decoLeft + $::editx]
-        set top [expr $decoTop + $::edity + $menuheight]
+        set left [expr {$decoLeft + $::editx}]
+        set top [expr {$decoTop + $::edity + $menuheight}]
         # popup menu
         catch { destroy .completion_popup }
         menu .completion_popup -tearoff 0
-        foreach name $::completions {
-            .completion_popup add command -label $name -command \
-                "::completion::write_text $name" -activebackground \
-                "#222222" -activeforeground "#DDDDDD" -background \
-                "#DDDDDD" -foreground "#222222"
-        }
+        ::completion::update_popup $::completions
         tk_popup .completion_popup $left $top
-        .completion_popup entryconfigure 0 -state active
+        .completion_popup entryconfigure $i -state active
+        .completion_popup configure -font [list "DejaVu Sans" 10]
+
+        bind .completion_popup <KeyRelease> \
+            {+::completion::refind %K}
+
     } {
         .completion_popup entryconfigure $i -state active
+    }
+}
+
+proc ::completion::update_popup {arr} {
+    foreach name $arr {
+        .completion_popup add command -label $name -command \
+            "::completion::write_text $name" -activebackground \
+            "#222222" -activeforeground "#DDDDDD" -background \
+            "#DDDDDD" -foreground "#222222"
+    }
+    .completion_popup entryconfigure 0 -state active
+}
+
+proc ::completion::refind {key} {
+    puts "you pressed-------- $key"
+    # FIXME use iso
+    if {
+        $key ne "Tab" && $key ne "Up" && $key ne "Right" \
+        && $key ne "Down" && $key ne "Left" && $key ne "Control_L" \
+        && $key ne "Control_R" && $key ne "Alt_L" && $key ne "Alt_R" \
+	&& $key ne "Shift_L" && $key ne "Shift_R"
+    } {
+	# FIXME what if user types "space" ??
+        set ::current_text [::completion::cleantext $::current_text]
+        switch -- $key {
+	    "space" { set key " " }
+	    "asterisk" { set key "*" }
+	    "plus" { set key "+" }
+	    "minus" { set key "-" }
+	}
+        if {$key eq "BackSpace"} {
+            set key ""
+            set ::current_text [string replace $::current_text end end]
+        } {
+            set ::current_text [format "%s%s" $::current_text $key]
+            # send key to pd
+            ::pd_bindings::sendkey $::current_canvas 1 $key "" ""
+            ::pd_bindings::sendkey $::current_canvas 0 $key "" ""
+        }
+        # write new text in the box
+        ::completion::write_text $::current_text
+        # udate popup
+        .completion_popup delete 0 end
+        ::completion::update_completions $::current_text
+        ::completion::update_popup $::completions
     }
 }
 
@@ -185,6 +238,7 @@ proc ::completion::write_text {args} {
         set cha [string index $text $i]
         scan $cha %c keynum
         pdsend "pd key 1 $keynum 0"
+        puts "pdsend pd key $keynum"
     }
     # to be able to erase it later
     set ::erase_text $text
@@ -193,7 +247,7 @@ proc ::completion::write_text {args} {
 ###########################################################
 # overwritten
 
-# I overwrite this just to be able to reset the cycle in auto-completion
+# overwrite this just to be able to reset the cycle in auto-completion
 proc ::pd_bindings::sendkey {window state key iso shift} {
     switch -- $key {
         "BackSpace" { set iso ""; set key 8 }
@@ -213,7 +267,7 @@ proc ::pd_bindings::sendkey {window state key iso shift} {
         pdsend "$mytoplevel key $state $key $shift"
         # auto-completion
         # something was typed in so reset $::cycle
-        if {$key != 9} {set ::cycle false}
+        #if {$key != 9} {set ::cycle false}
     }
 }
 
@@ -229,8 +283,8 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     set tkcanvas [tkcanvas_name $mytoplevel]
     set rectcoords [$tkcanvas bbox $tag]
     if {$rectcoords ne ""} {
-        set ::editx [expr int([lindex $rectcoords 0])]
-        set ::edity [expr int([lindex $rectcoords 3])]
+        set ::editx [expr {int([lindex $rectcoords 0])}]
+        set ::edity [expr {int([lindex $rectcoords 3])}]
     }
     if {$editing == 0} {
         selection clear $tkcanvas
