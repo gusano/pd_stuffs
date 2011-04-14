@@ -1,6 +1,6 @@
-# META NAME auto-complete plugin
-# META DESCRIPTION Does auto-completion for objects
-# META AUTHOR <Yvan Volochine> yvan.pd@mail.com
+# META NAME menubar-plugin
+# META DESCRIPTION adds usual ALT shortcuts to pd menubar
+# META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
 # META VERSION 0.11
 
 package require Tcl 8.4

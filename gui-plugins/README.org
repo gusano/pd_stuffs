@@ -1,0 +1,9 @@
+Gui-Plugins for pure-data - http://puredata.info
+
+* Requirements
+
+  Pd >= 0.43
+
+* Installation
+
+  Copy the *-plugin.tcl files anywhere in your pd path.
