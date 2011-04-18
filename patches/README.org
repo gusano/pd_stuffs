@@ -1,0 +1,11 @@
+pure-data patches - test at your own risk =)
+
+* Installation
+
+  get pd source and apply a patch:
+
+  : $ git clone git://puredata.git.sourceforge.net/gitroot/pure-data/pure-data
+  : $ cd pure-data
+  : $ git am PATH/TO/THE/PATCH
+
+  and build pd
