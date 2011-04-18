@@ -1,0 +1,93 @@
+From ff470bf476868eb2105ea933bb5f19505284d844 Mon Sep 17 00:00:00 2001
+From: Yvan Volochine <yvan.volochine@gmail.com>
+Date: Wed, 13 Apr 2011 11:51:23 +0200
+Subject: [PATCH] added colors to obj msg coords
+
+---
+ src/g_canvas.c |    2 +-
+ src/g_text.c   |   14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/src/g_canvas.c b/src/g_canvas.c
+index e5116c0..096a954 100644
+--- a/src/g_canvas.c
++++ b/src/g_canvas.c
+@@ -733,7 +733,7 @@ static void canvas_drawlines(t_canvas *x)
+     {
+         linetraverser_start(&t, x);
+         while (oc = linetraverser_next(&t))
+-            sys_vgui(".x%lx.c create line %d %d %d %d -width %d -tags [list l%lx cord]\n",
++            sys_vgui(".x%lx.c create line %d %d %d %d -width %d -tags [list l%lx cord] -fill #464646\n",
+                     glist_getcanvas(x),
+                         t.tr_lx1, t.tr_ly1, t.tr_lx2, t.tr_ly2, 
+                             (outlet_getsymbol(t.tr_outlet) == &s_signal ? 2:1),
+diff --git a/src/g_text.c b/src/g_text.c
+index a6e5049..300f6ec 100644
+--- a/src/g_text.c
++++ b/src/g_text.c
+@@ -1053,7 +1053,7 @@ static void text_select(t_gobj *z, t_glist *glist, int state)
+     rtext_select(y, state);
+     if (glist_isvisible(glist) && gobj_shouldvis(&x->te_g, glist))
+         sys_vgui(".x%lx.c itemconfigure %sR -fill %s\n", glist, 
+-            rtext_gettag(y), (state? "blue" : "black"));
++            rtext_gettag(y), (state? "blue" : "#b1b1b1"));
+ }
+ 
+ static void text_activate(t_gobj *z, t_glist *glist, int state)
+@@ -1227,7 +1227,7 @@ void glist_drawiofor(t_glist *glist, t_object *ob, int firsttime,
+         int onset = x1 + (width - IOWIDTH) * i / nplus;
+         if (firsttime)
+             sys_vgui(".x%lx.c create rectangle %d %d %d %d \
+--tags [list %so%d outlet]\n",
++-tags [list %so%d outlet] -outline #464646\n",
+                 glist_getcanvas(glist),
+                 onset, y2 - 1,
+                 onset + IOWIDTH, y2,
+@@ -1245,7 +1245,7 @@ void glist_drawiofor(t_glist *glist, t_object *ob, int firsttime,
+         int onset = x1 + (width - IOWIDTH) * i / nplus;
+         if (firsttime)
+             sys_vgui(".x%lx.c create rectangle %d %d %d %d \
+--tags [list %si%d inlet]\n",
++-tags [list %si%d inlet] -outline #464646\n",
+                 glist_getcanvas(glist),
+                 onset, y1,
+                 onset + IOWIDTH, y1 + EXTRAPIX,
+@@ -1271,7 +1271,7 @@ void text_drawborder(t_text *x, t_glist *glist,
+         char *pattern = ((pd_class(&x->te_pd) == text_class) ? "-" : "\"\"");
+         if (firsttime)
+             sys_vgui(".x%lx.c create line\
+- %d %d %d %d %d %d %d %d %d %d -dash %s -tags [list %sR obj]\n",
++ %d %d %d %d %d %d %d %d %d %d -dash %s -tags [list %sR obj] -fill #b1b1b1\n",
+                 glist_getcanvas(glist),
+                     x1, y1,  x2, y1,  x2, y2,  x1, y2,  x1, y1,  pattern, tag);
+         else
+@@ -1280,7 +1280,7 @@ void text_drawborder(t_text *x, t_glist *glist,
+  %d %d %d %d %d %d %d %d %d %d\n",
+                 glist_getcanvas(glist), tag,
+                     x1, y1,  x2, y1,  x2, y2,  x1, y2,  x1, y1);
+-            sys_vgui(".x%lx.c itemconfigure %sR -dash %s\n",
++            sys_vgui(".x%lx.c itemconfigure %sR -dash %s -fill #b1b1b1\n",
+                 glist_getcanvas(glist), tag, pattern);
+         }
+     }
+@@ -1288,7 +1288,7 @@ void text_drawborder(t_text *x, t_glist *glist,
+     {
+         if (firsttime)
+             sys_vgui(".x%lx.c create line\
+- %d %d %d %d %d %d %d %d %d %d %d %d %d %d -tags [list %sR msg]\n",
++ %d %d %d %d %d %d %d %d %d %d %d %d %d %d -tags [list %sR msg] -fill #b1b1b1\n",
+                 glist_getcanvas(glist),
+                 x1, y1,  x2+4, y1,  x2, y1+4,  x2, y2-4,  x2+4, y2,
+                 x1, y2,  x1, y1,
+@@ -1304,7 +1304,7 @@ void text_drawborder(t_text *x, t_glist *glist,
+     {
+         if (firsttime)
+             sys_vgui(".x%lx.c create line\
+- %d %d %d %d %d %d %d %d %d %d %d %d -tags [list %sR atom]\n",
++ %d %d %d %d %d %d %d %d %d %d %d %d -tags [list %sR atom] -fill #b1b1b1\n",
+                 glist_getcanvas(glist),
+                 x1, y1,  x2-4, y1,  x2, y1+4,  x2, y2,  x1, y2,  x1, y1,
+                     tag);
+-- 
+1.7.4.4
+
