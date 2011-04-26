@@ -1,11 +1,11 @@
 # recentfiles-plugin
 
-this adds support for recently opened files in Pd.
-Pd will remember the recent files when quitting/restarting.
+this plugin adds ALT shortcuts to recently opened files in Pd.
 
-the files list is stored in ~/.config/pure-data on linux,
-registry on windows (if available) and
-~/Library/Preferences/org.puredata.plist on mac.
+
+note: the original behavior of this plugin (adding support for recent files
+when quitting/restarting Pd) has been added to Pd vanilla >=0.43, so now it just
+add ALT shortcuts.
 
 
 
@@ -13,11 +13,14 @@ send bugreports: yvan dot volochine ((at)) gmail dot com
 
 
 
-
 -----------------------------------------------------------------
 
 
 version history:
+
+0.2:
+- now just adds ALT shortcuts (original plugin was added to distro)
+- FIX: META descriptions
 
 0.13:
 - FIX win users now have linux behavior (no more registry)
