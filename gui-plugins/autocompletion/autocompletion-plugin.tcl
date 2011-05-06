@@ -14,7 +14,9 @@
 # * / etc should NOT trigger popup
 
 package require Tcl 8.5
-namespace eval ::completion:: {}
+namespace eval ::completion:: {
+    variable ::completion::config
+}
 
 ###########################################################
 # overwritten
@@ -25,21 +27,18 @@ rename ::dialog_font::ok ::dialog_font::ok_old
 ############################################################
 # GLOBALS
 
-# this is where you can put extra objects/abstractions that you want to
-# work with auto-completion. BEWARE, you should have *only one* object/abstraction
-# name per line!
-set ::user_objects_list "~/pd/list_of_my_objects.txt"
-#set ::user_objects_list ""
+# default
+set ::completion::config(user_objects_list) "~/pd/list_of_my_objects.txt"
+set ::completion::config(mode) Tab
+set ::completion::config(lines) 7
+set ::completion::config(font) "DejaVu Sans Mono"
+set ::completion::config(font_size) 9 ;# FIXME ???
+set ::completion::config(bg) "#418bd4"
+set ::completion::config(fg) white
 
 
-############################################################
 # private
-
 set ::external_filetype ""
-set ::completion_lines 7
-set ::font_size 10 ;# FIXME ???
-set ::completion_bg #418bd4
-set ::completion_fg white
 set ::new_object false
 set ::toplevel ""
 set ::current_canvas ""
@@ -73,6 +72,7 @@ value vcf~ vd~ vline~ vradio vslider vsnapshot~ vu wrap wrap~ writesf~}
 
 
 proc ::completion::init {} {
+    ::completion::read_config
     switch -- $::windowingsystem {
         "aqua"  { set ::external_filetype *.pd_darwin }
         "win32" { set ::external_filetype *.dll }
@@ -80,8 +80,32 @@ proc ::completion::init {} {
     }
     bind all <Tab> {+::completion::trigger}
     ::completion::add_user_externals
-    ::completion::add_user_objects $::user_objects_list
+    ::completion::add_user_objects $::completion::config(user_objects_list)
     set ::all_externals [lsort $::all_externals]
+}
+
+# taken from kiosk-plugin.tcl by Iohannes
+proc ::completion::read_config {{filename autocompletion.cfg}} {
+    if {[file exists $filename]} {
+        set fp [open $filename r]
+    } else {
+        set filename [file join $::current_plugin_loadpath $filename]
+        if {[file exists $filename]} {
+            set fp [open $filename r]
+        } else {
+            puts "autocompletion.cfg not found"
+            return False
+        }
+    }
+    while {![eof $fp]} {
+        set data [gets $fp]
+        if { [string is list $data ] } {
+            if { [llength $data ] > 1 } {
+                set ::completion::config([lindex $data 0]) [lindex $data 1]
+            }
+        }
+    }
+ return True
 }
 
 proc ::completion::trigger {} {
@@ -142,40 +166,53 @@ proc ::completion::find_completions {} {
     set length [llength $::completions]
     if {$::current_text ne ""} {
         ::completion::update
-        set length [llength $::completions]
     }
     if {$length > 0} {
         if {$length == 1} {
             ::completion::replace_text [lindex $::completions 0]
-            catch { destroy .pop }
+            catch { destroy .pop }; focus -force $::current_canvas
         } {
             if {![winfo exists .pop]} { ::completion::popup_draw }
             ::completion::try_common_prefix
-	    ::completion_scrollbar
+            ::completion_scrollbar
         }
     } { catch { destroy .pop } }
 }
 
-proc ::completion::update {} {
+proc ::completion::update {{redraw 0}} {
     set ::erase_text $::current_text
     set text $::current_text
-    # prevent wildcards
-    set text [string map {"*" "\\*"} $text]
-    set text [string map {"-" "\\-"} $text]
-    set ::completions [lsearch -all -inline -glob $::all_externals $text*]
-    set length [llength $::completions]
-    if {$length == 0} {
-	catch { destroy .pop }
-    } else { ::completion_scrollbar }
+    if {$::current_text ne ""} {
+        # prevent wildcards ? ;# FIXME
+        set text [string map {"*" "\\*"} $text]
+        set text [string map {"-" "\\-"} $text]
+        set ::completions [lsearch -all -inline -glob $::all_externals $text*]
+        set length [llength $::completions]
+        if {$length == 0} {
+            catch { destroy .pop }
+        } else {
+            if {$::completion::config(mode) eq "All" || $redraw} {
+                ::completion::popup_draw
+            }
+            ::completion_scrollbar
+        }
+    } { destroy .pop }
+}
+
+proc ::completion_store {tag} {
+    # TODO
+#    if {[regexp {^$} $tag]}
+#    lappend ::all_externals $tag
+#    set ::all_externals [lsort $::all_externals]
 }
 
 proc ::completion::choose_selected {} {
     set selected [.pop.f.lb curselection]
     catch { destroy .pop}
-    focus -force $::toplevel
     ::completion::replace_text [lindex $::completions $selected]
     set ::current_text [lindex $::completions $selected]
     set ::completions {}
+    focus -force $::current_canvas
 }
 
 # keys with listbox focus
@@ -188,7 +225,6 @@ proc ::completion::lb_keys {key} {
         "Return"    { ::completion::choose_selected }
         "BackSpace" { ::completion::chop 0 }
     }
-#        "Tab"       { focus -force $::current_canvas }
 }
 
 # keys from textbox
@@ -221,11 +257,12 @@ proc ::completion::chop {{fromtext 0}} {
         pdsend "$::toplevel key 0 8 0"
     }
     set ::current_text [string replace $::current_text end end]
-    ::completion::update
+    ::completion::update [expr {1 - $fromtext}] ;# create popup if listbox had focus
     if {[winfo exists .pop]} {
         .pop.f.lb selection clear 0 end
         .pop.f.lb selection set 0
     }
+    focus -force $::current_canvas
 }
 
 proc ::completion::insert_key {key} {
@@ -233,7 +270,8 @@ proc ::completion::insert_key {key} {
     pdsend "pd key 1 $keynum 0"
     append ::current_text $key
     ::completion::update
-    focus -force $::current_canvas
+    focus -force $::toplevel
+    focus -force $::current_canvas ;# FIXME
     pdtk_text_editing $::toplevel $::current_tag 1
 }
 
@@ -316,16 +354,16 @@ proc ::completion::popup_draw {} {
     pack configure .pop.f
     .pop.f configure -relief solid -borderwidth 1 -background white
 
-    listbox .pop.f.lb -selectmode browse -height 7 -listvariable \
-        ::completions -activestyle none -highlightcolor $::completion_fg \
-        -selectbackground $::completion_bg -selectforeground $::completion_fg \
+    listbox .pop.f.lb -selectmode browse -height $::completion::config(lines) \
+        -listvariable ::completions -activestyle none -highlightcolor $::completion::config(fg) \
+        -selectbackground $::completion::config(bg) -selectforeground $::completion::config(fg) \
         -width 24 -yscrollcommand [list .pop.f.sb set] -takefocus 0
     pack .pop.f.lb -side left -expand 1 -fill both
-    .pop.f.lb configure -font [list "DejaVu Sans Mono" $::font_size] \
-        -relief flat
+    .pop.f.lb configure -font [list $::completion::config(font) \
+                                   $::completion::config(font_size)] -relief flat
     .pop.f.lb selection set 0 0
     pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview]] \
-	-side left -fill y -anchor w
+        -side left -fill y -anchor w
     bind .pop.f.lb <Escape> {after idle {destroy .pop; focus -force $::current_canvas }}
     bind .pop.f.lb <KeyPress> {::completion::lb_keys %K}
     bind .pop.f.lb <ButtonRelease> {after idle {::completion::choose_selected}}
@@ -334,11 +372,11 @@ proc ::completion::popup_draw {} {
 
 proc ::completion_scrollbar {} {
     if {[winfo exists .pop]} {
-	if {[llength $::completions] < $::completion_lines} {
-	    pack forget .pop.f.sb
-	} else {
-	    pack .pop.f.sb -side left -fill y
-	}
+        if {[llength $::completions] < $::completion::config(lines)} {
+            pack forget .pop.f.sb
+        } else {
+            pack .pop.f.sb -side left -fill y
+        }
     }
 }
 
@@ -359,7 +397,7 @@ proc pdtk_text_set {tkcanvas tag text} {
     # auto-completion: store typed text
     if {![winfo exists .pop]} {
         if {[llength $::current_text] < 4} {
-	    # there are default whitespaces in an empty object
+            # there are default whitespaces in an empty object
             set ::current_text [string trimright $text " "]
         } { set ::current_text $text }
     }
@@ -380,6 +418,7 @@ proc pdtk_text_editing {mytoplevel tag editing} {
         set ::lock_motion false
         set ::canvas_bound 0
         catch { destroy .pop }
+        ::completion_store $::current_text
     } {
         set ::editingtext($mytoplevel) $editing
         # auto-completion
