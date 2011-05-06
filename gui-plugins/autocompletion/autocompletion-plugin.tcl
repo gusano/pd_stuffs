@@ -6,6 +6,8 @@
 # TODO
 # - add user arguments (tabread $1 ...)
 # - wrap around completions
+# - move global options to *.cfg file
+# - cleanup
 
 # BUGS FIXME
 # "list ..." is buggy
@@ -34,6 +36,10 @@ set ::user_objects_list "~/pd/list_of_my_objects.txt"
 # private
 
 set ::external_filetype ""
+set ::completion_lines 7
+set ::font_size 10 ;# FIXME ???
+set ::completion_bg #418bd4
+set ::completion_fg white
 set ::new_object false
 set ::toplevel ""
 set ::current_canvas ""
@@ -41,10 +47,8 @@ set ::current_tag ""
 set ::lock_motion false
 set ::editx 0
 set ::edity 0
-set ::font_size 10 ;# FIXME ???
 set ::current_text ""
 set ::erase_text ""
-set ::i 0
 set ::completions {}
 set ::canvas_bound 0 ;# FIXME remove
 
@@ -135,20 +139,19 @@ proc ::completion::add_user_objects {afile} {
 }
 
 proc ::completion::find_completions {} {
-    puts "finding for $::current_text"
     set length [llength $::completions]
     if {$::current_text ne ""} {
         ::completion::update
         set length [llength $::completions]
     }
-    set new_text [lindex $::completions $::i]
     if {$length > 0} {
         if {$length == 1} {
-            ::completion::replace_text $new_text
+            ::completion::replace_text [lindex $::completions 0]
             catch { destroy .pop }
         } {
             if {![winfo exists .pop]} { ::completion::popup_draw }
             ::completion::try_common_prefix
+	    ::completion_scrollbar
         }
     } { catch { destroy .pop } }
 }
@@ -160,8 +163,10 @@ proc ::completion::update {} {
     set text [string map {"*" "\\*"} $text]
     set text [string map {"-" "\\-"} $text]
     set ::completions [lsearch -all -inline -glob $::all_externals $text*]
-    if {[llength $::completions] == 0} { catch { destroy .pop } }
-    set ::i 0
+    set length [llength $::completions]
+    if {$length == 0} {
+	catch { destroy .pop }
+    } else { ::completion_scrollbar }
 }
 
 proc ::completion::choose_selected {} {
@@ -312,20 +317,29 @@ proc ::completion::popup_draw {} {
     .pop.f configure -relief solid -borderwidth 1 -background white
 
     listbox .pop.f.lb -selectmode browse -height 7 -listvariable \
-        ::completions -activestyle none -highlightcolor white \
-        -selectbackground #418bd4 -selectforeground white \
+        ::completions -activestyle none -highlightcolor $::completion_fg \
+        -selectbackground $::completion_bg -selectforeground $::completion_fg \
         -width 24 -yscrollcommand [list .pop.f.sb set] -takefocus 0
     pack .pop.f.lb -side left -expand 1 -fill both
     .pop.f.lb configure -font [list "DejaVu Sans Mono" $::font_size] \
         -relief flat
     .pop.f.lb selection set 0 0
     pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview]] \
-        -side left -fill y -anchor w
-
-    bind .pop.f.lb <Escape> {after idle {destroy .pop}}
+	-side left -fill y -anchor w
+    bind .pop.f.lb <Escape> {after idle {destroy .pop; focus -force $::current_canvas }}
     bind .pop.f.lb <KeyPress> {::completion::lb_keys %K}
     bind .pop.f.lb <ButtonRelease> {after idle {::completion::choose_selected}}
     focus .pop.f.lb
+}
+
+proc ::completion_scrollbar {} {
+    if {[winfo exists .pop]} {
+	if {[llength $::completions] < $::completion_lines} {
+	    pack forget .pop.f.sb
+	} else {
+	    pack .pop.f.sb -side left -fill y
+	}
+    }
 }
 
 proc ::completion::mouse {x y} {
