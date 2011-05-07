@@ -1,12 +1,12 @@
-# META NAME auto-completion plugin
-# META DESCRIPTION enables auto-completion for objects
+# META NAME completion plugin
+# META DESCRIPTION enables completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
 # META VERSION 0.40
 
 # TODO
 # - add user arguments (tabread $1 ...)
 # - wrap around completions
-# - move global options to *.cfg file
+# - simplify the focus behavior
 # - cleanup
 
 # BUGS FIXME
@@ -85,7 +85,7 @@ proc ::completion::init {} {
 }
 
 # taken from kiosk-plugin.tcl by Iohannes
-proc ::completion::read_config {{filename autocompletion.cfg}} {
+proc ::completion::read_config {{filename completion.cfg}} {
     if {[file exists $filename]} {
         set fp [open $filename r]
     } else {
@@ -93,7 +93,7 @@ proc ::completion::read_config {{filename autocompletion.cfg}} {
         if {[file exists $filename]} {
             set fp [open $filename r]
         } else {
-            puts "autocompletion.cfg not found"
+            puts "completion.cfg not found"
             return False
         }
     }
@@ -340,6 +340,9 @@ proc ::completion::popup_draw {} {
     set menuheight 32
     if {$::windowingsystem ne "aqua"} { incr menuheight 24 }
     set geom [wm geometry $::toplevel]
+    # fix weird bug on osx
+    set decoLeft 0
+    set decoTop 0
     regexp -- {([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)} $geom -> \
         width height decoLeft decoTop
     set left [expr {$decoLeft + $::editx}]
@@ -394,7 +397,7 @@ proc ::completion::mouseup {x y} {
 # change the text in an existing text box
 proc pdtk_text_set {tkcanvas tag text} {
     $tkcanvas itemconfig $tag -text $text
-    # auto-completion: store typed text
+    # completion: store typed text
     if {![winfo exists .pop]} {
         if {[llength $::current_text] < 4} {
             # there are default whitespaces in an empty object
@@ -413,7 +416,7 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     }
     if {$editing == 0} {
         selection clear $tkcanvas
-        # auto-completion
+        # completion
         set ::completions {}
         set ::lock_motion false
         set ::canvas_bound 0
@@ -421,7 +424,7 @@ proc pdtk_text_editing {mytoplevel tag editing} {
         ::completion_store $::current_text
     } {
         set ::editingtext($mytoplevel) $editing
-        # auto-completion
+        # completion
         set ::current_canvas $tkcanvas
         if {$tag ne ""} {
             set ::current_tag $tag
@@ -438,8 +441,8 @@ proc ::dialog_font::ok {gfxstub} {
     variable fontsize
     apply $gfxstub $fontsize
     cancel $gfxstub
-    # auto-completion
-    set ::font_size [expr {$fontsize - 1}];# uh ?
+    # completion
+    set ::completion::config(font_size) [expr {$fontsize - 1}];# linux only ?
 }
 
 ############################################################
@@ -479,4 +482,4 @@ proc ::completion::common_prefix {} {
 
 ::completion::init
 
-pdtk_post "loaded: autocompletion-plugin 0.40\n"
+pdtk_post "loaded: completion-plugin 0.40\n"
