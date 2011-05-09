@@ -1,8 +1,7 @@
 # completion-plugin
 
 This plugin enables auto-completion for Pd objects.
-Just hit the TAB key (or any other key depending on your mode) while typing into
-an object to trigger completion mode.
+Just hit the TAB key while typing into an object to trigger completion mode.
 By default, only Pd internals are available, but you can add your own
 objects/abstractions names by editing completion.cfg file:
 Find the 'user_objects_list'' variable and put there the path to your file.
@@ -17,6 +16,11 @@ send bug reports: yvan.volochine@gmail.com
 
 version history:
 
+
+0.41:
+- cleanup, simplified focus behavior, removed unused proc, better bindings
+- remove 'All' mode (just hitting Tab once is the same)
+- various fixes
 
 0.40:
 - new GUI
