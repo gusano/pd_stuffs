@@ -75,7 +75,9 @@ proc ::completion::init {} {
     }
     bind all <Tab> {+::completion::trigger}
     ::completion::add_user_externals
-    ::completion::add_user_objects $::completion::config(user_objects_list)
+    ::completion::add_libraries_externals
+    ::completion::read_objectlist_file \
+	[file join $::completion::config(user_objects_list)]
     set ::all_externals [lsort $::all_externals]
 }
 
@@ -100,7 +102,8 @@ proc ::completion::read_config {{filename completion.cfg}} {
             }
         }
     }
- return True
+    close $fp
+    return True
 }
 
 proc ::completion::add_user_externals {} {
@@ -117,17 +120,23 @@ proc ::completion::add_user_externals {} {
     }
 }
 
-proc ::completion::add_user_objects {afile} {
-    set filename [file join $afile]
-    if {
-        $afile ne ""
-        && [file exists $filename]
-        && [file readable $filename]
+proc ::completion::add_libraries_externals {} {
+    foreach lib $::startup_libraries {
+	set filename [file join $::current_plugin_loadpath "extra_objects" $lib]
+	::completion::read_objectlist_file [format "%s.txt" $filename] 
+    }
+}
+
+proc ::completion::read_objectlist_file {afile} {
+    if {[file exists $afile]
+        && [file readable $afile]
     } {
-        set fl [open $filename r]
+        set fl [open $afile r]
         while {[gets $fl line] >= 0} {
-            if {[string index $line 0] ne "#"} {
-                lappend ::all_externals $line
+            if {[string index $line 0] ne ";"
+		&& [string index $line 0] ne " "
+		&& [lsearch -exact $::all_externals $line] == -1} {
+		lappend ::all_externals $line
             }
         }
         close $fl
@@ -190,6 +199,7 @@ proc ::completion::update_gui {} {
 	::completion::scrollbar_check
 	if {$::completions == {}} { ::completion::empty }
 	if {[llength $::completions] > 1} {
+	    .pop.f.lb configure -state normal
 	    .pop.f.lb select set 0 0
 	}
     }
@@ -198,9 +208,8 @@ proc ::completion::update_gui {} {
 proc ::completion::empty {} {
     if {[winfo exists .pop.f.lb]} {
         set ::completions {"(none)"}
-        .pop.f.lb selection clear 0 end
-        .pop.f.lb selection set 0
         ::completion::scrollbar_check
+	.pop.f.lb configure -state disabled
     }
 }
 
@@ -217,20 +226,20 @@ proc ::completion::increment {} {
 # store keywords (send/receive or array)
 proc ::completion_store {tag} {
     set name 0
-    # TODO throw~/catch~
-    set kind(sr) {s r send receive send~ receive~}
+    set kind(sr) {s r}
+    set kind(sra) {send~ receive~}
     set kind(tc) {throw~ catch~}
     set kind(arr) {tabosc4~ tabplay~ tabread tabread4 \
                          tabread4~ tabread~ tabwrite tabwrite~}
-    # send/receive
-    if {[regexp {^(s|r|send|receive)\~*\s(\S+)$} $tag -> any name]} {
+    if {[regexp {^(s|r|send|receive)(\S+)$} $tag -> any name]} {
         set which sr
     }
-    # throw~/catch~
+    if {[regexp {^(send\~|receive\~)(\S+)$} $tag -> any name]} {
+        set which sra
+    }
     if {[regexp {^(throw\~|catch\~)\s(\S+)$} $tag -> any name]} {
         set which tc
     }
-    # array
     if {[regexp {^table\s(\S+)$} $tag -> name]} {
         set which arr
     }
@@ -383,11 +392,13 @@ proc ::completion::popup_draw {} {
             -highlightcolor $::completion::config(fg) \
             -selectbackground $::completion::config(bg) \
             -selectforeground $::completion::config(fg) -width 24 \
-            -yscrollcommand [list .pop.f.sb set] -takefocus 0
+            -yscrollcommand [list .pop.f.sb set] -takefocus 0 \
+	    -disabledforeground #333333
 
         pack .pop.f.lb -side left -expand 1 -fill both
         .pop.f.lb configure -relief flat \
-            -font [list $::completion::config(font) $::completion::config(font_size)]
+            -font [list $::completion::config(font) $::completion::config(font_size)] \
+	    -state normal
 
         pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview]] \
             -side left -fill y -anchor w

@@ -9,6 +9,10 @@ this file should contain one object name per line (no commas at the end of the
 line).
 some other options can be tweaked there, it should be pretty straightforward.
 
+Some libraries will automatically get their externals added if they were loaded
+with -lib (Gem, gridflow, py).
+Their objects list can be found in the subfolder "extra_objects".
+
 
 send bug reports: yvan.volochine@gmail.com
 
@@ -21,6 +25,7 @@ version history:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
 - remove 'All' mode (just hitting Tab once is the same)
 - added 'save_mode' to remember send/receive/table/... names
+- added libraries objects lists (Gem, gridflow, py)
 - various fixes
 
 0.40:
