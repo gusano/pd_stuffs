@@ -24,6 +24,7 @@ rename ::dialog_font::ok ::dialog_font::ok_old
 
 # default
 set ::completion::config(user_objects_list) "~/pd/list_of_my_objects.txt"
+set ::completion::config(save_mode) 1 ;# save keywords (s/r/array/table/...)
 set ::completion::config(lines) 7
 set ::completion::config(font) "DejaVu Sans Mono"
 set ::completion::config(font_size) 9 ;# FIXME ???
@@ -36,9 +37,10 @@ set ::current_canvas ""
 set ::current_tag ""
 set ::current_text ""
 set ::erase_text ""
-set ::completions {}
-set ::completion_keywords(sr)
-set ::completion_keywords(arr)
+set ::completions {"(none)"}
+#set ::completion_keywords(sr) {}
+#set ::completion_keywords(arr) {}
+#set ::completion_keywords(tc) {}
 set ::new_object false
 set ::editx 0
 set ::edity 0
@@ -59,8 +61,8 @@ rmstodb rmstodb~ route rpole~ rsqrt~ rzero_rev~ rzero~ samphold~ samplerate~ \
 savepanel sel send send~ serial set setsize sig~ sin snapshot~ soundfiler spigot \
 sqrt sqrt~ stripnote struct sublist swap switch~ symbol sysexin table tabosc4~ \
 tabplay~ tabread tabread4 tabread4~ tabread~ tabwrite tabwrite~ tan template \
-textfile threshold~ throw~ timer toggle touchin touchout trigger unpack until \
-value vcf~ vd~ vline~ vradio vslider vsnapshot~ vu wrap wrap~ writesf~}
+textfile tgl threshold~ throw~ timer toggle touchin touchout trigger unpack \
+until value vcf~ vd~ vline~ vradio vslider vsnapshot~ vu wrap wrap~ writesf~}
 
 
 proc ::completion::init {} {
@@ -142,8 +144,10 @@ proc ::completion::trigger {} {
     if {$::new_object && $::current_text ne ""} {
         bind $::current_canvas <KeyRelease> {::completion::text_keys %K}
         if {![winfo exists .pop]} {
+	    ::completion::popup_draw
             ::completion::search
-            ::completion::try_common_prefix
+	    ::completion::try_common_prefix
+	    ::completion::update_gui
             set length [llength $::completions]
             set first [lindex $::completions 0]
             if {$length == 1 && $first ne $completion_empty} {
@@ -154,7 +158,9 @@ proc ::completion::trigger {} {
             if {[llength $::completions] == 1} {
                 ::completion::choose_selected
             } {
-                ::completion::increment
+		if {![::completion::try_common_prefix]} {
+		    ::completion::increment
+		}
             }
         }
     }
@@ -166,7 +172,7 @@ proc ::completion::search {{text ""}} {
     if {$text ne ""} {
         set ::current_text $text
         set ::erase_text $text
-    } {    
+    } {
         set ::current_text \
             [$::current_canvas itemcget $::current_tag -text]
     }
@@ -180,9 +186,13 @@ proc ::completion::search {{text ""}} {
 }
 
 proc ::completion::update_gui {} {
-    ::completion::popup_draw
-    ::completion::scrollbar_check
-    if {$::completions == {}} { ::completion::empty }
+    if {[winfo exists .pop.f.lb]} {
+	::completion::scrollbar_check
+	if {$::completions == {}} { ::completion::empty }
+	if {[llength $::completions] > 1} {
+	    .pop.f.lb select set 0 0
+	}
+    }
 }
 
 proc ::completion::empty {} {
@@ -206,23 +216,30 @@ proc ::completion::increment {} {
 
 # store keywords (send/receive or array)
 proc ::completion_store {tag} {
+    set name 0
     # TODO throw~/catch~
     set kind(sr) {s r send receive send~ receive~}
+    set kind(tc) {throw~ catch~}
     set kind(arr) {tabosc4~ tabplay~ tabread tabread4 \
                          tabread4~ tabread~ tabwrite tabwrite~}
     # send/receive
-    if {[regexp {^(s|r|send|receive|throw|catch)\~*\s(\S+)$} $tag \
-             -> any name]} {
+    if {[regexp {^(s|r|send|receive)\~*\s(\S+)$} $tag -> any name]} {
         set which sr
+    }
+    # throw~/catch~
+    if {[regexp {^(throw\~|catch\~)\s(\S+)$} $tag -> any name]} {
+        set which tc
     }
     # array
     if {[regexp {^table\s(\S+)$} $tag -> name]} {
         set which arr
     }
-    if {[info exists name]} {
+
+    if {$name != 0} {
         foreach key $kind($which) {
-            if {[lsearch -all -inline -glob $::all_externals $key] eq ""} {
-                lappend ::completion_keywords($which) [list $key $name]
+            if {[lsearch -all -inline -glob $::all_externals [list $key $name]] eq ""} {
+		lappend ::all_externals [list $key $name]
+		set ::all_externals [lsort $::all_externals]
             }
         }
     }
@@ -371,7 +388,6 @@ proc ::completion::popup_draw {} {
         pack .pop.f.lb -side left -expand 1 -fill both
         .pop.f.lb configure -relief flat \
             -font [list $::completion::config(font) $::completion::config(font_size)]
-        .pop.f.lb selection set 0 0
 
         pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview]] \
             -side left -fill y -anchor w
@@ -380,6 +396,7 @@ proc ::completion::popup_draw {} {
         bind .pop.f.lb <KeyRelease> {::completion::lb_keys %K}
         bind .pop.f.lb <ButtonRelease> {after idle {::completion::choose_selected}}
         focus .pop.f.lb
+        .pop.f.lb selection set 0 0
     }
 }
 
@@ -425,8 +442,11 @@ proc pdtk_text_editing {mytoplevel tag editing} {
         # completion
         set ::completions {}
         catch { destroy .pop }
-	# TODO
-        #::completion_store $::current_text
+	# store keywords
+	if {$::completion::config(save_mode)} {
+	    set text [$tkcanvas itemcget $::current_tag -text]
+	    ::completion_store $text
+	}
     } {
         set ::editingtext($mytoplevel) $editing
         # completion
@@ -461,6 +481,7 @@ proc ::completion::prefix {s1 s2} {
 }
 
 proc ::completion::try_common_prefix {} {
+    set found 0
     set prefix [::completion::common_prefix]
     if {$prefix ne $::current_text && $prefix ne ""} {
         ::completion::replace_text $prefix
@@ -469,6 +490,7 @@ proc ::completion::try_common_prefix {} {
         set ::current_text $prefix
         set found 1
     }
+    return $found
 }
 
 proc ::completion::common_prefix {} {
