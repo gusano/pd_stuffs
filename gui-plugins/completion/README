@@ -20,6 +20,7 @@ version history:
 0.41:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
 - remove 'All' mode (just hitting Tab once is the same)
+- added 'save_mode' to remember send/receive/table/... names
 - various fixes
 
 0.40:
