@@ -10,7 +10,7 @@ line).
 some other options can be tweaked there, it should be pretty straightforward.
 
 Some libraries will automatically get their externals added if they were loaded
-with -lib (Gem, gridflow, py).
+with -lib (Gem, gridflow, py, ...).
 Their objects list can be found in the subfolder "extra_objects".
 
 
@@ -23,9 +23,8 @@ version history:
 
 0.41:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
-- remove 'All' mode (just hitting Tab once is the same)
 - added 'save_mode' to remember send/receive/table/... names
-- added libraries objects lists (Gem, gridflow, py)
+- added libraries objects lists (Gem, gridflow, py) TODO: other ones ?
 - various fixes
 
 0.40:
@@ -33,7 +32,6 @@ version history:
 - renamed to 'completion-plugin.tcl'
 - added bash completion mode
 - added support for osx and win32
-- added "All" mode: any key will trigger completions when typing in an object
 - added *.cfg file for user options
 - TODO add support for user arguments (like [tabread foo], etc) ??
 
