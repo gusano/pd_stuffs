@@ -44,6 +44,7 @@ set ::completions {"(none)"}
 set ::new_object false
 set ::editx 0
 set ::edity 0
+set ::focus ""
 
 # all pd internals (hopefully)
 set ::all_externals {abs abs~ adc~ append atan atan2 bag bang bang~ bendin \
@@ -77,7 +78,7 @@ proc ::completion::init {} {
     ::completion::add_user_externals
     ::completion::add_libraries_externals
     ::completion::read_objectlist_file \
-	[file join $::completion::config(user_objects_list)]
+        [file join $::completion::config(user_objects_list)]
     set ::all_externals [lsort $::all_externals]
 }
 
@@ -122,8 +123,8 @@ proc ::completion::add_user_externals {} {
 
 proc ::completion::add_libraries_externals {} {
     foreach lib $::startup_libraries {
-	set filename [file join $::current_plugin_loadpath "extra_objects" $lib]
-	::completion::read_objectlist_file [format "%s.txt" $filename] 
+        set filename [file join $::current_plugin_loadpath "extra_objects" $lib]
+        ::completion::read_objectlist_file [format "%s.txt" $filename]
     }
 }
 
@@ -134,9 +135,9 @@ proc ::completion::read_objectlist_file {afile} {
         set fl [open $afile r]
         while {[gets $fl line] >= 0} {
             if {[string index $line 0] ne ";"
-		&& [string index $line 0] ne " "
-		&& [lsearch -exact $::all_externals $line] == -1} {
-		lappend ::all_externals $line
+                && [string index $line 0] ne " "
+                && [lsearch -exact $::all_externals $line] == -1} {
+                lappend ::all_externals $line
             }
         }
         close $fl
@@ -153,10 +154,10 @@ proc ::completion::trigger {} {
     if {$::new_object && $::current_text ne ""} {
         bind $::current_canvas <KeyRelease> {::completion::text_keys %K}
         if {![winfo exists .pop]} {
-	    ::completion::popup_draw
+            ::completion::popup_draw
             ::completion::search
-	    ::completion::try_common_prefix
-	    ::completion::update_gui
+            ::completion::try_common_prefix
+            ::completion::update_gui
             set length [llength $::completions]
             set first [lindex $::completions 0]
             if {$length == 1 && $first ne $completion_empty} {
@@ -167,9 +168,9 @@ proc ::completion::trigger {} {
             if {[llength $::completions] == 1} {
                 ::completion::choose_selected
             } {
-		if {![::completion::try_common_prefix]} {
-		    ::completion::increment
-		}
+                if {![::completion::try_common_prefix]} {
+                    ::completion::increment
+                }
             }
         }
     }
@@ -196,12 +197,14 @@ proc ::completion::search {{text ""}} {
 
 proc ::completion::update_gui {} {
     if {[winfo exists .pop.f.lb]} {
-	::completion::scrollbar_check
-	if {$::completions == {}} { ::completion::empty }
-	if {[llength $::completions] > 1} {
-	    .pop.f.lb configure -state normal
-	    .pop.f.lb select set 0 0
-	}
+        ::completion::scrollbar_check
+        if {$::completions == {}} { ::completion::empty }
+        if {[llength $::completions] > 1} {
+            .pop.f.lb configure -state normal
+            .pop.f.lb select clear 0 end
+            after 10 ;# FIXME
+            .pop.f.lb select set 0 0
+        }
     }
 }
 
@@ -209,18 +212,26 @@ proc ::completion::empty {} {
     if {[winfo exists .pop.f.lb]} {
         set ::completions {"(none)"}
         ::completion::scrollbar_check
-	.pop.f.lb configure -state disabled
+        .pop.f.lb configure -state disabled
     }
 }
 
 proc ::completion::increment {} {
-    focus .pop.f.lb
-    set selected [.pop.f.lb curselection]
-    set updated [expr {($selected + 1) % [llength $::completions]}]
-    .pop.f.lb selection clear 0 end
-    .pop.f.lb selection set $updated
-    # FIXME and wrap
-    .pop.f.lb yview scroll 1 units
+    if {$::focus != "pop"} {
+        focus .pop.f.lb
+        set ::focus "pop"
+    } {
+        set selected [.pop.f.lb curselection]
+        set updated [expr {($selected + 1) % [llength $::completions]}]
+        .pop.f.lb selection clear 0 end
+        .pop.f.lb selection set $updated
+        # wrap
+        if {$updated >= $::completion::config(lines)} {
+            .pop.f.lb yview scroll 1 units
+        } elseif {$updated == 0} {
+            .pop.f.lb yview scroll -100 page
+        }
+    }
 }
 
 # store keywords (send/receive or array)
@@ -231,10 +242,10 @@ proc ::completion_store {tag} {
     set kind(tc) {throw~ catch~}
     set kind(arr) {tabosc4~ tabplay~ tabread tabread4 \
                          tabread4~ tabread~ tabwrite tabwrite~}
-    if {[regexp {^(s|r|send|receive)(\S+)$} $tag -> any name]} {
+    if {[regexp {^(s|r|send|receive)\s(\S+)$} $tag -> any name]} {
         set which sr
     }
-    if {[regexp {^(send\~|receive\~)(\S+)$} $tag -> any name]} {
+    if {[regexp {^(send\~|receive\~)\s(\S+)$} $tag -> any name]} {
         set which sra
     }
     if {[regexp {^(throw\~|catch\~)\s(\S+)$} $tag -> any name]} {
@@ -247,8 +258,8 @@ proc ::completion_store {tag} {
     if {$name != 0} {
         foreach key $kind($which) {
             if {[lsearch -all -inline -glob $::all_externals [list $key $name]] eq ""} {
-		lappend ::all_externals [list $key $name]
-		set ::all_externals [lsort $::all_externals]
+                lappend ::all_externals [list $key $name]
+                set ::all_externals [lsort $::all_externals]
             }
         }
     }
@@ -261,6 +272,7 @@ proc ::completion::choose_selected {} {
     set ::current_text [lindex $::completions $selected]
     set ::completions {}
     focus -force $::current_canvas
+    set ::focus "canvas"
 }
 
 # keys with listbox focus
@@ -289,11 +301,7 @@ proc ::completion::text_keys {key} {
     } elseif {$key eq "BackSpace"} {
         after 10; ::completion::search ;# FIXME
     } elseif {$key eq "Return"} {
-        if {[winfo exists .pop]} {
-            ::completion::choose_selected
-        } {
-            ::completion::text_unedit
-        }
+        ::completion::choose_or_unedit
     }
 }
 
@@ -305,16 +313,8 @@ proc ::completion::insert_key {key} {
     ::completion::search $::current_text
     focus -force $::toplevel
     focus -force $::current_canvas ;# FIXME
+    set ::focus "canvas"
     pdtk_text_editing $::toplevel $::current_tag 1
-}
-
-proc ::completion::popup_update_selection {inc} {
-    set newsel [expr {[.pop.lb curselection] + $inc}]
-    set newsel [expr {[expr {$newsel<0}]?0:$newsel}]
-    .pop.lb selection clear [.pop.lb curselection]
-    .pop.lb selection set $newsel
-    # boring hack: keep cursor at the end of textbox
-    $::current_canvas icursor $::current_tag 80
 }
 
 proc ::completion::erase_text {} {
@@ -342,6 +342,14 @@ proc ::completion::replace_text {args} {
     set ::erase_text $text
 }
 
+proc ::completion::choose_or_unedit {} {
+    if {[winfo exists .pop]} {
+        ::completion::choose_selected
+    } {
+        ::completion::text_unedit
+    }
+}
+
 proc ::completion::text_unedit {} {
     set x [expr {$::editx - 2}]
     set y [expr {$::edity - 2}]
@@ -362,6 +370,7 @@ proc ::completion::chop {} {
         .pop.f.lb selection set 0
     }
     focus -force $::current_canvas
+    set ::focus "canvas"
 }
 
 proc ::completion::popup_draw {} {
@@ -381,7 +390,7 @@ proc ::completion::popup_draw {} {
         toplevel .pop
         wm overrideredirect .pop 1
         wm geometry .pop +$left+$top
-        frame .pop.f
+        frame .pop.f -takefocus 0
 
         pack configure .pop.f
         .pop.f configure -relief solid -borderwidth 1 -background white
@@ -392,21 +401,22 @@ proc ::completion::popup_draw {} {
             -highlightcolor $::completion::config(fg) \
             -selectbackground $::completion::config(bg) \
             -selectforeground $::completion::config(fg) -width 24 \
-            -yscrollcommand [list .pop.f.sb set] -takefocus 0 \
-	    -disabledforeground #333333
+            -yscrollcommand [list .pop.f.sb set] -takefocus 1 \
+            -disabledforeground #333333
 
         pack .pop.f.lb -side left -expand 1 -fill both
         .pop.f.lb configure -relief flat \
             -font [list $::completion::config(font) $::completion::config(font_size)] \
-	    -state normal
+            -state normal
 
-        pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview]] \
+        pack .pop.f.lb [scrollbar ".pop.f.sb" -command [list .pop.f.lb yview] -takefocus 0] \
             -side left -fill y -anchor w
         bind .pop.f.lb <Escape> \
             {after idle { ::completion::popup_destroy 1 }}
         bind .pop.f.lb <KeyRelease> {::completion::lb_keys %K}
         bind .pop.f.lb <ButtonRelease> {after idle {::completion::choose_selected}}
         focus .pop.f.lb
+        set ::focus "pop"
         .pop.f.lb selection set 0 0
     }
 }
@@ -414,6 +424,7 @@ proc ::completion::popup_draw {} {
 proc ::completion::popup_destroy {{unbind 0}} {
     catch { destroy .pop }
     focus -force $::current_canvas
+    set ::focus "canvas"
     if {$unbind} {
         bind $::current_canvas <KeyRelease> {}
     }
@@ -453,11 +464,11 @@ proc pdtk_text_editing {mytoplevel tag editing} {
         # completion
         set ::completions {}
         catch { destroy .pop }
-	# store keywords
-	if {$::completion::config(save_mode)} {
-	    set text [$tkcanvas itemcget $::current_tag -text]
-	    ::completion_store $text
-	}
+        # store keywords
+        if {$::completion::config(save_mode)} {
+            set text [$tkcanvas itemcget $::current_tag -text]
+            ::completion_store $text
+        }
     } {
         set ::editingtext($mytoplevel) $editing
         # completion
@@ -472,6 +483,7 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     }
     set ::new_object $editing
     $tkcanvas focus $tag
+    set ::focus "tag"
 }
 
 proc ::dialog_font::ok {gfxstub} {
