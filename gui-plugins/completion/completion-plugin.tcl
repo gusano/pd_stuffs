@@ -146,7 +146,7 @@ proc ::completion::read_objectlist_file {afile} {
 
 proc ::completion::trigger {} {
     variable completion_empty
-    if {$::current_text eq ""} {
+    if {$::current_canvas ne "" && $::current_text eq ""} {
         set ::current_text \
             [$::current_canvas itemcget $::current_tag -text]
         ::completion::trimspaces
