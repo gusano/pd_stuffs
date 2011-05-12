@@ -204,6 +204,7 @@ proc ::completion::update_gui {} {
             .pop.f.lb select clear 0 end
             after 10 ;# FIXME
             .pop.f.lb select set 0 0
+	    .pop.f.lb yview scroll -100 page
         }
     }
 }
