@@ -11,7 +11,6 @@ package require Tcl 8.5
 namespace eval ::completion:: {
     variable ::completion::config
     variable external_filetype ""
-    variable completion_empty "(none)"
 }
 
 ###########################################################
@@ -38,13 +37,11 @@ set ::current_tag ""
 set ::current_text ""
 set ::erase_text ""
 set ::completions {"(none)"}
-#set ::completion_keywords(sr) {}
-#set ::completion_keywords(arr) {}
-#set ::completion_keywords(tc) {}
 set ::new_object false
 set ::editx 0
 set ::edity 0
 set ::focus ""
+set ::completion_text_updated 0
 
 # all pd internals (hopefully)
 set ::all_externals {abs abs~ adc~ append atan atan2 bag bang bang~ bendin \
@@ -59,8 +56,8 @@ namecanvas nbx netreceive netsend noise~ notein noteout openpanel osc~ outlet~ \
 pack pgmin pgmout phasor~ pipe plot poly polytouchin polytouchout pow powtodb \
 powtodb~ pow~ print qlist random readsf realtime receive receive~ rfft~ rifft~ \
 rmstodb rmstodb~ route rpole~ rsqrt~ rzero_rev~ rzero~ samphold~ samplerate~ \
-savepanel sel send send~ serial set setsize sig~ sin snapshot~ soundfiler spigot \
-sqrt sqrt~ stripnote struct sublist swap switch~ symbol sysexin table tabosc4~ \
+savepanel sel send send~ set setsize sig~ sin snapshot~ soundfiler spigot sqrt \
+sqrt~ stripnote struct sublist swap switch~ symbol sysexin table tabosc4~ \
 tabplay~ tabread tabread4 tabread4~ tabread~ tabwrite tabwrite~ tan template \
 textfile tgl threshold~ throw~ timer toggle touchin touchout trigger unpack \
 until value vcf~ vd~ vline~ vradio vslider vsnapshot~ vu wrap wrap~ writesf~}
@@ -145,8 +142,10 @@ proc ::completion::read_objectlist_file {afile} {
 }
 
 proc ::completion::trigger {} {
-    variable completion_empty
-    if {$::current_canvas ne "" && $::current_text eq ""} {
+    if {$::current_canvas ne ""
+        && $::current_text eq ""
+        && ! $::completion_text_updated
+    } {
         set ::current_text \
             [$::current_canvas itemcget $::current_tag -text]
         ::completion::trimspaces
@@ -160,9 +159,10 @@ proc ::completion::trigger {} {
             ::completion::update_gui
             set length [llength $::completions]
             set first [lindex $::completions 0]
-            if {$length == 1 && $first ne $completion_empty} {
+            if {$length == 1 && $first ne "(none)"} {
                 ::completion::replace_text $first
                 ::completion::popup_destroy
+                ::completion::empty
             }
         } {
             if {[llength $::completions] == 1} {
@@ -182,7 +182,7 @@ proc ::completion::search {{text ""}} {
     if {$text ne ""} {
         set ::current_text $text
         set ::erase_text $text
-    } {
+    } elseif { !$::completion_text_updated } {
         set ::current_text \
             [$::current_canvas itemcget $::current_tag -text]
     }
@@ -210,10 +210,10 @@ proc ::completion::update_gui {} {
 
 proc ::completion::empty {} {
     if {[winfo exists .pop.f.lb]} {
-        set ::completions {"(none)"}
         ::completion::scrollbar_check
         .pop.f.lb configure -state disabled
     }
+    set ::completions {"(none)"}
 }
 
 proc ::completion::increment {} {
@@ -242,6 +242,8 @@ proc ::completion_store {tag} {
     set kind(tc) {throw~ catch~}
     set kind(arr) {tabosc4~ tabplay~ tabread tabread4 \
                          tabread4~ tabread~ tabwrite tabwrite~}
+    set kind(del) {delread~ delwrite~}
+
     if {[regexp {^(s|r|send|receive)\s(\S+)$} $tag -> any name]} {
         set which sr
     }
@@ -253,6 +255,9 @@ proc ::completion_store {tag} {
     }
     if {[regexp {^table\s(\S+)$} $tag -> name]} {
         set which arr
+    }
+    if {[regexp {^(delread\~|delwrite\~)\s(\S+)\s*\S*$} $tag -> any name]} {
+        set which del
     }
 
     if {$name != 0} {
@@ -270,13 +275,14 @@ proc ::completion::choose_selected {} {
     ::completion::popup_destroy
     ::completion::replace_text [lindex $::completions $selected]
     set ::current_text [lindex $::completions $selected]
-    set ::completions {}
+    ::completion::empty
     focus -force $::current_canvas
     set ::focus "canvas"
 }
 
 # keys with listbox focus
 proc ::completion::lb_keys {key} {
+    set ::completion_text_updated 0
     if {[regexp {^[a-zA-Z0-9~/\._\+]{1}$} $key]} {
         ::completion::insert_key $key; return
     }
@@ -289,6 +295,7 @@ proc ::completion::lb_keys {key} {
 
 # keys from textbox
 proc ::completion::text_keys {key} {
+    set ::completion_text_updated 0
     switch -- $key {
         "plus"   { set key "+" }
         "minus"   { set key "-" }
@@ -315,6 +322,7 @@ proc ::completion::insert_key {key} {
     focus -force $::current_canvas ;# FIXME
     set ::focus "canvas"
     pdtk_text_editing $::toplevel $::current_tag 1
+    set ::completion_text_updated 0
 }
 
 proc ::completion::erase_text {} {
@@ -340,6 +348,10 @@ proc ::completion::replace_text {args} {
     }
     # to be able to erase it later
     set ::erase_text $text
+    # nasty hack: the widget does not update his text because we pretend
+    # we typed the text although we faked it so pd gets it as well (mmh)
+    set ::completion_text_updated 1
+    set ::current_text $text
 }
 
 proc ::completion::choose_or_unedit {} {
@@ -358,6 +370,7 @@ proc ::completion::text_unedit {} {
     ::completion::mouseup $x $y
     pdtk_text_editing $::toplevel $::current_tag 0
     set ::new_object 0
+    set ::completion_text_updated 0
 }
 
 proc ::completion::chop {} {
@@ -462,7 +475,8 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     if {$editing == 0} {
         selection clear $tkcanvas
         # completion
-        set ::completions {}
+        ::completion::empty
+        set ::completion_text_updated 0
         catch { destroy .pop }
         # store keywords
         if {$::completion::config(save_mode)} {
