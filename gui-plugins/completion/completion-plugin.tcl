@@ -157,17 +157,16 @@ proc ::completion::trigger {} {
             ::completion::search
             ::completion::try_common_prefix
             ::completion::update_gui
-            set length [llength $::completions]
             set first [lindex $::completions 0]
-            if {$length == 1 && $first ne "(none)"} {
+            if {[::completion::unique] } {
                 ::completion::replace_text $first
                 ::completion::popup_destroy
-                ::completion::empty
+                ::completion::disable
             }
         } {
-            if {[llength $::completions] == 1} {
+            if {[::completion::unique]} {
                 ::completion::choose_selected
-            } {
+            } elseif { [llength $::completions] > 1 } {
                 if {![::completion::try_common_prefix]} {
                     ::completion::increment
                 }
@@ -198,18 +197,26 @@ proc ::completion::search {{text ""}} {
 proc ::completion::update_gui {} {
     if {[winfo exists .pop.f.lb]} {
         ::completion::scrollbar_check
-        if {$::completions == {}} { ::completion::empty }
+        if {$::completions == {}} { ::completion::disable }
         if {[llength $::completions] > 1} {
             .pop.f.lb configure -state normal
             .pop.f.lb select clear 0 end
-            after 10 ;# FIXME
             .pop.f.lb select set 0 0
-	    .pop.f.lb yview scroll -100 page
+            .pop.f.lb yview scroll -100 page
         }
     }
 }
 
-proc ::completion::empty {} {
+proc ::completion::unique {} {
+    return [expr {[llength $::completions] == 1
+                  && [::completion::valid]}]
+}
+
+proc ::completion::valid {} {
+    return [expr {[lindex $::completions 0] ne "(none)"}]
+}
+
+proc ::completion::disable {} {
     if {[winfo exists .pop.f.lb]} {
         ::completion::scrollbar_check
         .pop.f.lb configure -state disabled
@@ -272,13 +279,15 @@ proc ::completion_store {tag} {
 }
 
 proc ::completion::choose_selected {} {
-    set selected [.pop.f.lb curselection]
-    ::completion::popup_destroy
-    ::completion::replace_text [lindex $::completions $selected]
-    set ::current_text [lindex $::completions $selected]
-    ::completion::empty
-    focus -force $::current_canvas
-    set ::focus "canvas"
+    if {[::completion::valid]} {
+        set selected [.pop.f.lb curselection]
+        ::completion::popup_destroy
+        ::completion::replace_text [lindex $::completions $selected]
+        set ::current_text [lindex $::completions $selected]
+        ::completion::disable
+        focus -force $::current_canvas
+        set ::focus "canvas"
+    }
 }
 
 # keys with listbox focus
@@ -356,7 +365,7 @@ proc ::completion::replace_text {args} {
 }
 
 proc ::completion::choose_or_unedit {} {
-    if {[winfo exists .pop]} {
+    if {[winfo exists .pop] && [::completion::valid]} {
         ::completion::choose_selected
     } {
         ::completion::text_unedit
@@ -476,7 +485,7 @@ proc pdtk_text_editing {mytoplevel tag editing} {
     if {$editing == 0} {
         selection clear $tkcanvas
         # completion
-        ::completion::empty
+        ::completion::disable
         set ::completion_text_updated 0
         catch { destroy .pop }
         # store keywords
