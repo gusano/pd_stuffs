@@ -2,6 +2,11 @@
 
 This plugin enables auto-completion for Pd objects.
 Just hit the TAB key while typing into an object to trigger completion mode.
+
+INSTALL:
+copy the whole 'completion' folder anywhere in your pd path.
+
+NOTES:
 By default, only Pd internals are available, but you can add your own
 objects/abstractions names by editing completion.cfg file:
 Find the 'user_objects_list'' variable and put there the path to your file.
@@ -10,7 +15,7 @@ line).
 some other options can be tweaked there, it should be pretty straightforward.
 
 Some libraries will automatically get their externals added if they were loaded
-with -lib (Gem, gridflow, py, ...).
+with -lib (like Gem, gridflow, py, ...).
 Their objects list can be found in the subfolder "extra_objects".
 
 
@@ -23,7 +28,7 @@ version history:
 
 0.41:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
-- added 'save_mode' to remember send/receive/table/... names
+- added 'save_mode' to remember send/receive/table/delread... names
 - added libraries objects lists (Gem, gridflow, py) TODO: other ones ?
 - various fixes
 
