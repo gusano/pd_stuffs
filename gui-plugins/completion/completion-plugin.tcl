@@ -74,8 +74,7 @@ proc ::completion::init {} {
     bind all <Tab> {+::completion::trigger}
     ::completion::add_user_externals
     ::completion::add_libraries_externals
-    ::completion::read_objectlist_file \
-        [file join $::completion::config(user_objects_list)]
+    ::completion::add_user_objectlist
     set ::all_externals [lsort $::all_externals]
 }
 
@@ -122,6 +121,14 @@ proc ::completion::add_libraries_externals {} {
     foreach lib $::startup_libraries {
         set filename [file join $::current_plugin_loadpath "extra_objects" $lib]
         ::completion::read_objectlist_file [format "%s.txt" $filename]
+    }
+}
+
+proc ::completion::add_user_objectlist {} {
+    set userdir [file join $::current_plugin_loadpath "user_objects"]
+    foreach filename [glob -directory $userdir -nocomplain -types {f} -- \
+                         *.txt] {
+        ::completion::read_objectlist_file $filename
     }
 }
 

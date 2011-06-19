@@ -8,15 +8,16 @@ copy the whole 'completion' folder anywhere in your pd path.
 
 NOTES:
 By default, only Pd internals are available, but you can add your own
-objects/abstractions names by editing completion.cfg file:
-Find the 'user_objects_list'' variable and put there the path to your file.
-this file should contain one object name per line (no commas at the end of the
+objects/abstractions names by adding them into any *.txt file inside the
+"user_objects" subfolder.
+these files should contain one object name per line (no commas at the end of the
 line).
-some other options can be tweaked there, it should be pretty straightforward.
+some other options can be tweaked in the completion.cfg config file, it should
+be pretty straightforward.
 
 Some libraries will automatically get their externals added if they were loaded
-with -lib (like Gem, gridflow, py, ...).
-Their objects list can be found in the subfolder "extra_objects".
+with -lib (like Gem, gridflow, ...).
+Their objects list can be found in the subfolder "lib_objects".
 
 
 send bug reports: yvan.volochine@gmail.com
@@ -25,6 +26,9 @@ send bug reports: yvan.volochine@gmail.com
 
 version history:
 
+
+0.42:
+- added user_objects file support
 
 0.41:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
