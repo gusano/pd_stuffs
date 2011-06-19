@@ -1,7 +1,7 @@
 # META NAME completion plugin
 # META DESCRIPTION enables completion for objects
 # META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
-# META VERSION 0.41
+# META VERSION 0.42
 
 # TODO
 # - add user arguments (tabread $1 ...)
@@ -22,7 +22,6 @@ rename ::dialog_font::ok ::dialog_font::ok_old
 # GLOBALS
 
 # default
-set ::completion::config(user_objects_list) "~/pd/list_of_my_objects.txt"
 set ::completion::config(save_mode) 1 ;# save keywords (s/r/array/table/...)
 set ::completion::config(lines) 7
 set ::completion::config(font) "DejaVu Sans Mono"
