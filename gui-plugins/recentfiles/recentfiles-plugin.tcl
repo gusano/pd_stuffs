@@ -42,5 +42,3 @@ proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
 if {[llength $::recentfiles_list] > 0} {
     ::pd_menus::update_recentfiles_menu false
 }
-
-pdtk_post "loaded: recentfiles-plugin 0.2\n"

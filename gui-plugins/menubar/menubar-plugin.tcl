@@ -26,7 +26,4 @@ proc recreate_menubar {} {
 
 if {$::windowingsystem eq "x11"} {
     recreate_menubar
-    pdtk_post "loaded: menubar-plugin 0.1\n"
-} {
-    pdtk_post "WARNING:\nmenubar-plugin is for linux only\n"
 }
