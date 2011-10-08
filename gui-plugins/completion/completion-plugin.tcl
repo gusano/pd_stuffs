@@ -423,6 +423,7 @@ proc ::completion::popup_draw {} {
     if {![winfo exists .pop]} {
         set menuheight 32
         if {$::windowingsystem ne "aqua"} { incr menuheight 24 }
+        incr menuheight $::completion::config(offset)
         set geom [wm geometry $::toplevel]
         # fix weird bug on osx
         set decoLeft 0
