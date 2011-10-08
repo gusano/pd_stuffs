@@ -396,12 +396,7 @@ proc ::completion::choose_or_unedit {} {
 }
 
 proc ::completion::text_unedit {} {
-    set x [expr {$::editx - 2}]
-    set y [expr {$::edity - 2}]
-    ::completion::mouse $x $y
-    set x [expr {$::editx + 2}]
-    ::completion::mouseup $x $y
-    pdtk_text_editing $::toplevel $::current_tag 0
+    pdsend "$::focused_window reselect"
     set ::new_object 0
     set ::completion_text_updated 0
 }
@@ -487,14 +482,6 @@ proc ::completion::scrollbar_check {} {
     }
 }
 
-proc ::completion::mouse {x y} {
-    pdsend "$::toplevel mouse [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1 0"
-}
-
-proc ::completion::mouseup {x y} {
-    pdsend "$::toplevel mouseup [$::current_canvas canvasx $x] [$::current_canvas canvasy $y] 1"
-}
-
 ###########################################################
 # overwritten
 
@@ -577,6 +564,9 @@ proc ::completion::common_prefix {} {
 proc ::completion::trimspaces {} {
     set ::current_text [string trimright $::current_text " "]
 }
+
+# just in case..
+bind all <$::modifier-Key-Return> {pdsend "$::focused_window reselect"}
 
 ###########################################################
 # main
