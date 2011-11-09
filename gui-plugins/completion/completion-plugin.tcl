@@ -63,20 +63,21 @@ set ::completion_text_updated 0
 set ::all_externals {abs abs~ adc~ append atan atan2 bag bang bang~ bendin \
 bendout biquad~ block bng bp~ canvas catch~ change clip clip~ cos cos~ cpole~ \
 cputime ctlin ctlout curve czero_rev~ czero~ dac~ dbtopow dbtopow~ dbtorms \
-dbtorms~ declare delay delread~ delwrite~ div drawnumber env~ exp exp~ fft~ \
-float framp~ ftom ftom~ get getsize hip~ hradio hslider ifft~ inlet inlet~ int \
-key keyname keyup line line~ list {list append} {list length} {list prepend} \
-{list split} {list trim} loadbang log log~ lop~ makefilename makenote max max~ \
-metro midiclkin midiin midiout midirealtimein min min~ mod moses mtof mtof~ \
-namecanvas nbx netreceive netsend noise~ notein noteout openpanel osc~ outlet~ \
-pack pgmin pgmout phasor~ pipe plot poly polytouchin polytouchout pow powtodb \
-powtodb~ pow~ print qlist random readsf realtime receive receive~ rfft~ rifft~ \
-rmstodb rmstodb~ route rpole~ rsqrt~ rzero_rev~ rzero~ samphold~ samplerate~ \
-savepanel sel send send~ set setsize sig~ sin snapshot~ soundfiler spigot sqrt \
-sqrt~ stripnote struct sublist swap switch~ symbol sysexin table tabosc4~ \
-tabplay~ tabread tabread4 tabread4~ tabread~ tabwrite tabwrite~ tan template \
-textfile tgl threshold~ throw~ timer toggle touchin touchout trigger unpack \
-until value vcf~ vd~ vline~ vradio vslider vsnapshot~ vu wrap wrap~ writesf~}
+dbtorms~ declare delay delread~ delwrite~ div drawnumber drawpolygon env~ exp \
+exp~ fft~ float framp~ ftom ftom~ get getsize hip~ hradio hslider ifft~ inlet \
+inlet~ int key keyname keyup line line~ list {list append} {list length} \
+{list prepend} {list split} {list trim} loadbang log log~ lop~ makefilename \
+makenote max max~ metro midiclkin midiin midiout midirealtimein min min~ mod \
+moses mtof mtof~ namecanvas nbx netreceive netsend noise~ notein noteout \
+openpanel osc~ outlet~ pack pgmin pgmout phasor~ pipe plot poly polytouchin \
+polytouchout pow powtodb powtodb~ pow~ print qlist random readsf realtime \
+receive receive~ rfft~ rifft~ rmstodb rmstodb~ route rpole~ rsqrt~ rzero_rev~ \
+rzero~ samphold~ samplerate~ savepanel sel send send~ set setsize sig~ sin \
+snapshot~ soundfiler spigot sqrt sqrt~ stripnote struct sublist swap switch~ \
+symbol sysexin table tabosc4~ tabplay~ tabread tabread4 tabread4~ tabread~ \
+tabwrite tabwrite~ tan template textfile tgl threshold~ throw~ timer toggle \
+touchin touchout trigger unpack until value vcf~ vd~ vline~ vradio vslider \
+vsnapshot~ vu wrap wrap~ writesf~}
 
 
 proc ::completion::init {} {

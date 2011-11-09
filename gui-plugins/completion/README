@@ -47,6 +47,8 @@ version history:
 
 0.42:
 - added user_objects file support
+- added optional offset for popup position
+- add forgotten drawpolygon
 
 0.41:
 - cleanup, simplified focus behavior, removed unused proc, better bindings
