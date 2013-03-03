@@ -1,7 +1,7 @@
 # META NAME recentfiles-plugin
 # META DESCRIPTION Add ALT shortcuts to recentfiles
-# META AUTHOR <Yvan Volochine> yvan.volochine@mail.com
-# META VERSION 0.2
+# META AUTHOR <Yvan Volochine> yvan.volochine@gmail.com
+# META VERSION 0.21
 
 package require Tcl 8.5
 
@@ -25,14 +25,18 @@ proc ::pd_menus::update_recentfiles_on_menu {mymenu {write}} {
     }
     # insert the list from the end because we insert each element on the top
     set i [llength $::recentfiles_list]
-    while {[incr i -1] > -1} {
+    while {[incr i -1] > 0} {
 
         set filename [lindex $::recentfiles_list $i]
         set j [expr {$i + 1}]
-        $mymenu insert [expr {$top_separator+1}] command \
-            -label [concat "$j. " [file tail $filename]] -command \
-            "open_file {$filename}" -underline 0
+        $mymenu insert [expr $top_separator+1] command \
+            -label [concat "$j. " [file tail $filename]] \
+            -command "open_file {$filename}" -underline 0
     }
+    set filename [lindex $::recentfiles_list 0]
+    $mymenu insert [expr $top_separator+1] command \
+        -label [concat "1. " [file tail $filename]] -command "open_file {$filename}" \
+        -underline 0
 
     # write to config file
     if {$write == true} { ::pd_guiprefs::write_recentfiles }
